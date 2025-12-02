@@ -1,5 +1,2 @@
-const plus = (a: number, b: number): number => {
-  return a + b;
-}
-
-export { plus };
+export { Vector3 } from './Vector3.js';
+export { Matrix4 } from './Matrix4.js';
