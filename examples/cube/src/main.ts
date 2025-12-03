@@ -1,100 +1,21 @@
-import { Engine } from "@web-real-3d/core";
+import {
+  Engine,
+  BoxGeometry,
+  VertexColorMaterial,
+  Mesh,
+} from "@web-real-3d/core";
 import { Matrix4, Vector3 } from "@web-real-3d/math";
 import GUI from "lil-gui";
 
-import cubeVertShader from "./shaders/cube.vert.wgsl?raw";
-import cubeFragShader from "./shaders/cube.frag.wgsl?raw";
+type FaceColors = [
+  [number, number, number],
+  [number, number, number],
+  [number, number, number],
+  [number, number, number],
+  [number, number, number],
+  [number, number, number]
+];
 
-function createCubeVertices(): {
-  vertices: Float32Array<ArrayBuffer>;
-  indices: Uint16Array<ArrayBuffer>;
-} {
-  // 24 vertices: 6 faces × 4 vertices
-  const positions = [
-    // Front face
-    [-1, -1, 1],
-    [1, -1, 1],
-    [1, 1, 1],
-    [-1, 1, 1],
-    // Back face
-    [1, -1, -1],
-    [-1, -1, -1],
-    [-1, 1, -1],
-    [1, 1, -1],
-    // Top face
-    [-1, 1, 1],
-    [1, 1, 1],
-    [1, 1, -1],
-    [-1, 1, -1],
-    // Bottom face
-    [-1, -1, -1],
-    [1, -1, -1],
-    [1, -1, 1],
-    [-1, -1, 1],
-    // Right face
-    [1, -1, 1],
-    [1, -1, -1],
-    [1, 1, -1],
-    [1, 1, 1],
-    // Left face
-    [-1, -1, -1],
-    [-1, -1, 1],
-    [-1, 1, 1],
-    [-1, 1, -1],
-  ];
-
-  const colors = [
-    // Front face - Red
-    [1.0, 0.3, 0.3],
-    [1.0, 0.3, 0.3],
-    [1.0, 0.3, 0.3],
-    [1.0, 0.3, 0.3],
-    // Back face - Green
-    [0.3, 1.0, 0.3],
-    [0.3, 1.0, 0.3],
-    [0.3, 1.0, 0.3],
-    [0.3, 1.0, 0.3],
-    // Top face - Blue
-    [0.3, 0.3, 1.0],
-    [0.3, 0.3, 1.0],
-    [0.3, 0.3, 1.0],
-    [0.3, 0.3, 1.0],
-    // Bottom face - Yellow
-    [1.0, 1.0, 0.3],
-    [1.0, 1.0, 0.3],
-    [1.0, 1.0, 0.3],
-    [1.0, 1.0, 0.3],
-    // Right face - Magenta
-    [1.0, 0.3, 1.0],
-    [1.0, 0.3, 1.0],
-    [1.0, 0.3, 1.0],
-    [1.0, 0.3, 1.0],
-    // Left face - Cyan
-    [0.3, 1.0, 1.0],
-    [0.3, 1.0, 1.0],
-    [0.3, 1.0, 1.0],
-    [0.3, 1.0, 1.0],
-  ];
-
-  // Interleaved vertex data: position(vec3) + color(vec3) = 6 floats per vertex
-  const vertexData: number[] = [];
-  for (let i = 0; i < 24; i++) {
-    vertexData.push(...positions[i], ...colors[i]);
-  }
-
-  // Indices for 12 triangles (6 faces × 2 triangles)
-  const indices = new Uint16Array([
-    0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14,
-    15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23,
-  ]);
-
-  return {
-    vertices: new Float32Array(vertexData) as Float32Array<ArrayBuffer>,
-    indices: indices as Uint16Array<ArrayBuffer>,
-  };
-}
-
-// GUI 파라미터 인터페이스
 interface CubeParams {
   rotationX: number;
   rotationY: number;
@@ -146,14 +67,26 @@ async function main() {
     cameraFolder.add(params, "cameraDistance", 2, 15).name("Distance");
     cameraFolder.add(params, "fov", 30, 120).name("FOV");
 
+    const faceColors: FaceColors = [
+      [1.0, 0.3, 0.3], // Front - Red
+      [0.3, 1.0, 0.3], // Back - Green
+      [0.3, 0.3, 1.0], // Top - Blue
+      [1.0, 1.0, 0.3], // Bottom - Yellow
+      [1.0, 0.3, 1.0], // Right - Magenta
+      [0.3, 1.0, 1.0], // Left - Cyan
+    ];
+    const geometry = new BoxGeometry(2, 2, 2);
+    const material = new VertexColorMaterial({ faceColors });
+    const mesh = new Mesh(geometry, material);
+
     const vertexShaderModule = device.createShaderModule({
       label: "Cube Vertex Shader",
-      code: cubeVertShader,
+      code: material.getVertexShader(),
     });
 
     const fragmentShaderModule = device.createShaderModule({
       label: "Cube Fragment Shader",
-      code: cubeFragShader,
+      code: material.getFragmentShader(),
     });
 
     let depthTexture = device.createTexture({
@@ -180,15 +113,7 @@ async function main() {
       vertex: {
         module: vertexShaderModule,
         entryPoint: "main",
-        buffers: [
-          {
-            arrayStride: 24,
-            attributes: [
-              { shaderLocation: 0, offset: 0, format: "float32x3" },
-              { shaderLocation: 1, offset: 12, format: "float32x3" },
-            ],
-          },
-        ],
+        buffers: [material.getVertexBufferLayout()],
       },
       fragment: {
         module: fragmentShaderModule,
@@ -207,21 +132,30 @@ async function main() {
       },
     });
 
-    const { vertices, indices } = createCubeVertices();
+    const vertices = mesh.getInterleavedVertices();
+    const indices = mesh.indices;
 
     const vertexBuffer = device.createBuffer({
       label: "Cube Vertex Buffer",
       size: vertices.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(vertexBuffer, 0, vertices);
+    device.queue.writeBuffer(
+      vertexBuffer,
+      0,
+      vertices as Float32Array<ArrayBuffer>
+    );
 
     const indexBuffer = device.createBuffer({
       label: "Cube Index Buffer",
       size: indices.byteLength,
       usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(indexBuffer, 0, indices);
+    device.queue.writeBuffer(
+      indexBuffer,
+      0,
+      indices as Uint16Array<ArrayBuffer>
+    );
 
     const uniformBuffer = device.createBuffer({
       label: "Uniform Buffer",
@@ -300,7 +234,7 @@ async function main() {
       renderPass.setBindGroup(0, bindGroup);
       renderPass.setVertexBuffer(0, vertexBuffer);
       renderPass.setIndexBuffer(indexBuffer, "uint16");
-      renderPass.drawIndexed(indices.length);
+      renderPass.drawIndexed(mesh.indexCount);
       renderPass.end();
 
       device.queue.submit([commandEncoder.finish()]);
