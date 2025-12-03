@@ -152,6 +152,7 @@ export class Matrix4 {
   }
 
   /**
+   * Creates a view matrix that transforms world coordinates to camera coordinates.
    * @param eye - Camera position in world space
    * @param target - Point the camera is looking at
    * @param up - Up direction vector (typically (0, 1, 0))
