@@ -1,4 +1,4 @@
-import { Vector3 } from "./Vector3";
+import { Vector3 } from "./Vector3.js";
 
 /**
  * 4x4 Matrix Class
