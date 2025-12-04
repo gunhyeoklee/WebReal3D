@@ -18,12 +18,11 @@ export {
   LineMaterial,
   LineColorMaterial,
 } from "./material";
-export {
-  Camera,
-  PerspectiveCamera,
-  type PerspectiveCameraOptions,
-} from "./camera";
+export * from "./camera";
 export { Object3D } from "./Object3D";
 export { Scene } from "./Scene";
 export { Mesh } from "./Mesh";
-export { CameraHelper, type CameraHelperOptions } from "./CameraHelper";
+export {
+  CameraFrustumHelper,
+  type CameraFrustumHelperOptions,
+} from "./camera/CameraFrustumHelper";

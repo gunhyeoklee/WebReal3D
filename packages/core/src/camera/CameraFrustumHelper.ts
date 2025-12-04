@@ -1,12 +1,12 @@
-import type { PerspectiveCamera } from "./camera/PerspectiveCamera";
+import type { PerspectiveCamera } from "./PerspectiveCamera";
 import {
   FrustumGeometry,
   type FrustumColors,
-} from "./geometry/FrustumGeometry";
-import { LineColorMaterial } from "./material/LineColorMaterial";
-import { Mesh } from "./Mesh";
+} from "../geometry/FrustumGeometry";
+import { LineColorMaterial } from "../material/LineColorMaterial";
+import { Mesh } from "../Mesh";
 
-export interface CameraHelperOptions {
+export interface CameraFrustumHelperOptions {
   /** Color for the near plane edges (RGB, 0-1 range). Default: [1, 1, 0] (yellow) */
   nearColor?: [number, number, number];
   /** Color for the far plane edges (RGB, 0-1 range). Default: [1, 0.5, 0] (orange) */
@@ -30,7 +30,7 @@ export interface CameraHelperOptions {
  * @example
  * ```typescript
  * const debugCamera = new PerspectiveCamera(60, 1.5, 0.1, 100);
- * const helper = new CameraHelper(debugCamera, {
+ * const helper = new CameraFrustumHelper(debugCamera, {
  *   nearColor: [0, 1, 0],   // Green near plane
  *   farColor: [1, 0, 0],    // Red far plane
  *   sideColor: [0, 0, 1],   // Blue sides
@@ -43,12 +43,15 @@ export interface CameraHelperOptions {
  * helper.update();
  * ```
  */
-export class CameraHelper extends Mesh {
+export class CameraFrustumHelper extends Mesh {
   private readonly camera: PerspectiveCamera;
   private readonly frustumGeometry: FrustumGeometry;
   private readonly lineColorMaterial: LineColorMaterial;
 
-  constructor(camera: PerspectiveCamera, options: CameraHelperOptions = {}) {
+  constructor(
+    camera: PerspectiveCamera,
+    options: CameraFrustumHelperOptions = {}
+  ) {
     const frustumColors: FrustumColors = {
       near: options.nearColor ?? [1, 1, 0],
       far: options.farColor ?? [1, 0.5, 0],

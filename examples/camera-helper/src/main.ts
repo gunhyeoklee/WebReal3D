@@ -6,7 +6,7 @@ import {
   Mesh,
   Scene,
   PerspectiveCamera,
-  CameraHelper,
+  CameraFrustumHelper,
 } from "@web-real-3d/core";
 import { Vector3 } from "@web-real-3d/math";
 import GUI from "lil-gui";
@@ -33,20 +33,44 @@ interface Params {
   observerY: number;
   observerZ: number;
   observerFov: number;
-  // Debug camera params
-  debugFov: number;
-  debugNear: number;
-  debugFar: number;
-  debugDistance: number;
+  // Main camera params
+  mainFov: number;
+  mainNear: number;
+  mainFar: number;
+  mainDistance: number;
   showFrustum: boolean;
+}
+
+function createGUI(params: Params): GUI {
+  const gui = new GUI({ title: "Camera Helper Demo" });
+
+  const cubeFolder = gui.addFolder("Cube");
+  cubeFolder.add(params, "autoRotate").name("Auto Rotate");
+  cubeFolder.add(params, "rotationSpeed", 0, 3).name("Rotation Speed");
+  cubeFolder.add(params, "scale", 0.1, 3).name("Scale");
+
+  const observerFolder = gui.addFolder("Observer Camera (Left)");
+  observerFolder.add(params, "observerX", -15, 15).name("Position X");
+  observerFolder.add(params, "observerY", -15, 15).name("Position Y");
+  observerFolder.add(params, "observerZ", -15, 15).name("Position Z");
+  observerFolder.add(params, "observerFov", 30, 120).name("FOV");
+
+  const mainFolder = gui.addFolder("Main Camera (Right)");
+  mainFolder.add(params, "showFrustum").name("Show Frustum");
+  mainFolder.add(params, "mainDistance", 2, 8).name("Distance");
+  mainFolder.add(params, "mainFov", 30, 120).name("FOV");
+  mainFolder.add(params, "mainNear", 0.1, 2).name("Near Plane");
+  mainFolder.add(params, "mainFar", 2, 10).name("Far Plane");
+
+  return gui;
 }
 
 async function main() {
   const canvasObserver = document.getElementById(
     "canvas-observer"
   ) as HTMLCanvasElement;
-  const canvasDebug = document.getElementById(
-    "canvas-debug"
+  const canvasMain = document.getElementById(
+    "canvas-main"
   ) as HTMLCanvasElement;
 
   try {
@@ -54,9 +78,9 @@ async function main() {
     const rendererObserver = new Renderer(engineObserver);
     rendererObserver.setClearColor(0.1, 0.1, 0.1);
 
-    const engineDebug = await Engine.create({ canvas: canvasDebug });
-    const rendererDebug = new Renderer(engineDebug);
-    rendererDebug.setClearColor(0.15, 0.1, 0.1);
+    const engineMain = await Engine.create({ canvas: canvasMain });
+    const rendererMain = new Renderer(engineMain);
+    rendererMain.setClearColor(0.15, 0.1, 0.1);
 
     const params: Params = {
       // Cube params
@@ -71,33 +95,15 @@ async function main() {
       observerY: 3.0,
       observerZ: 8.0,
       observerFov: 60,
-      // Debug camera params
-      debugFov: 60,
-      debugNear: 0.5,
-      debugFar: 5,
-      debugDistance: 4,
+      // Main camera params
+      mainFov: 60,
+      mainNear: 0.5,
+      mainFar: 5,
+      mainDistance: 4,
       showFrustum: true,
     };
 
-    const gui = new GUI({ title: "Camera Helper Demo" });
-
-    const cubeFolder = gui.addFolder("Cube");
-    cubeFolder.add(params, "autoRotate").name("Auto Rotate");
-    cubeFolder.add(params, "rotationSpeed", 0, 3).name("Rotation Speed");
-    cubeFolder.add(params, "scale", 0.1, 3).name("Scale");
-
-    const observerFolder = gui.addFolder("Observer Camera (Left)");
-    observerFolder.add(params, "observerX", -15, 15).name("Position X");
-    observerFolder.add(params, "observerY", -15, 15).name("Position Y");
-    observerFolder.add(params, "observerZ", -15, 15).name("Position Z");
-    observerFolder.add(params, "observerFov", 30, 120).name("FOV");
-
-    const debugFolder = gui.addFolder("Debug Camera (Right)");
-    debugFolder.add(params, "showFrustum").name("Show Frustum");
-    debugFolder.add(params, "debugDistance", 2, 8).name("Distance");
-    debugFolder.add(params, "debugFov", 30, 120).name("FOV");
-    debugFolder.add(params, "debugNear", 0.1, 2).name("Near Plane");
-    debugFolder.add(params, "debugFar", 2, 10).name("Far Plane");
+    const gui = createGUI(params);
 
     const faceColors: FaceColors = [
       [1.0, 0.3, 0.3], // Front - Red
@@ -109,31 +115,31 @@ async function main() {
     ];
 
     const sceneObserver = new Scene();
-    const geometry = new BoxGeometry(2, 2, 2);
-    const material = new VertexColorMaterial({ faceColors });
-    const meshObserver = new Mesh(geometry, material);
-    sceneObserver.add(meshObserver);
+    const cubeGeometry = new BoxGeometry(2, 2, 2);
+    const cubeMaterial = new VertexColorMaterial({ faceColors });
+    const observerCubeMesh = new Mesh(cubeGeometry, cubeMaterial);
+    sceneObserver.add(observerCubeMesh);
 
-    const sceneDebug = new Scene();
-    const meshDebug = new Mesh(geometry, material);
-    sceneDebug.add(meshDebug);
+    const sceneMain = new Scene();
+    const mainCubeMesh = new Mesh(cubeGeometry, cubeMaterial);
+    sceneMain.add(mainCubeMesh);
 
-    const debugCamera = new PerspectiveCamera({
-      fov: params.debugFov,
-      aspect: canvasDebug.width / canvasDebug.height,
-      near: params.debugNear,
-      far: params.debugFar,
+    const mainCamera = new PerspectiveCamera({
+      fov: params.mainFov,
+      aspect: canvasMain.width / canvasMain.height,
+      near: params.mainNear,
+      far: params.mainFar,
     });
-    debugCamera.position.set(0, 0, params.debugDistance);
-    debugCamera.lookAt(new Vector3(0, 0, 0));
+    mainCamera.position.set(0, 0, params.mainDistance);
+    mainCamera.lookAt(new Vector3(0, 0, 0));
 
-    const cameraHelper = new CameraHelper(debugCamera, {
+    const cameraFrustumHelper = new CameraFrustumHelper(mainCamera, {
       nearColor: [0, 1, 0], // Green - Near plane
       farColor: [1, 0, 0], // Red - Far plane
       sideColor: [1, 1, 0], // Yellow - Connecting edges
       coneColor: [0.5, 0.5, 1], // Light blue - Camera to near plane
     });
-    sceneObserver.add(cameraHelper);
+    sceneObserver.add(cameraFrustumHelper);
 
     const observerCamera = new PerspectiveCamera({
       fov: params.observerFov,
@@ -156,20 +162,20 @@ async function main() {
         params.rotationY += deltaTime * params.rotationSpeed;
       }
 
-      // Sync both meshes
-      meshObserver.rotation.set(
+      // Sync both cube meshes
+      observerCubeMesh.rotation.set(
         params.rotationX,
         params.rotationY,
         params.rotationZ
       );
-      meshObserver.scale.set(params.scale, params.scale, params.scale);
+      observerCubeMesh.scale.set(params.scale, params.scale, params.scale);
 
-      meshDebug.rotation.set(
+      mainCubeMesh.rotation.set(
         params.rotationX,
         params.rotationY,
         params.rotationZ
       );
-      meshDebug.scale.set(params.scale, params.scale, params.scale);
+      mainCubeMesh.scale.set(params.scale, params.scale, params.scale);
 
       // Update observer camera
       observerCamera.fov = params.observerFov;
@@ -180,30 +186,30 @@ async function main() {
       );
       observerCamera.lookAt(new Vector3(0, 0, 0));
 
-      // Update debug camera
-      debugCamera.fov = params.debugFov;
-      debugCamera.near = params.debugNear;
-      debugCamera.far = params.debugFar;
-      debugCamera.position.set(0, 0, params.debugDistance);
-      debugCamera.lookAt(new Vector3(0, 0, 0));
+      // Update main camera
+      mainCamera.fov = params.mainFov;
+      mainCamera.near = params.mainNear;
+      mainCamera.far = params.mainFar;
+      mainCamera.position.set(0, 0, params.mainDistance);
+      mainCamera.lookAt(new Vector3(0, 0, 0));
 
       // Update frustum helper
-      cameraHelper.update();
-      cameraHelper.visible = params.showFrustum;
+      cameraFrustumHelper.update();
+      cameraFrustumHelper.visible = params.showFrustum;
 
       // Render both views
       rendererObserver.render(sceneObserver, observerCamera);
-      rendererDebug.render(sceneDebug, debugCamera);
+      rendererMain.render(sceneMain, mainCamera);
     });
 
     window.addEventListener("beforeunload", () => {
       observerCamera.dispose();
-      debugCamera.dispose();
+      mainCamera.dispose();
       gui.destroy();
       rendererObserver.dispose();
-      rendererDebug.dispose();
+      rendererMain.dispose();
       engineObserver.dispose();
-      engineDebug.dispose();
+      engineMain.dispose();
     });
   } catch (error) {
     console.error(error);
