@@ -3,13 +3,9 @@ import type { PerspectiveCamera } from "../camera/PerspectiveCamera";
 import { Matrix4 } from "@web-real-3d/math";
 
 export interface FrustumColors {
-  /** Color for the near plane edges (RGB, 0-1 range). Default: [1, 1, 0] (yellow) */
   near?: [number, number, number];
-  /** Color for the far plane edges (RGB, 0-1 range). Default: [1, 0.5, 0] (orange) */
   far?: [number, number, number];
-  /** Color for the connecting edges between near and far (RGB, 0-1 range). Default: [0.5, 0.5, 0.5] (gray) */
   sides?: [number, number, number];
-  /** Color for the lines from camera position to near plane corners (RGB, 0-1 range). Default: [0.3, 0.3, 0.3] (dark gray) */
   cone?: [number, number, number];
 }
 
@@ -92,7 +88,7 @@ export class FrustumGeometry implements Geometry {
 
     // NDC corners (WebGPU uses Z range [0, 1])
     // Near plane (z = 0)
-    const ndcCorners = [
+    const frustumNdcCorners = [
       // Near plane (z = 0)
       [-1, -1, 0], // near bottom-left
       [1, -1, 0], // near bottom-right
@@ -106,12 +102,12 @@ export class FrustumGeometry implements Geometry {
     ];
 
     // Transform NDC corners to world space
-    const worldCorners = ndcCorners.map((ndc) =>
+    const frustumWorldCorners = frustumNdcCorners.map((ndc) =>
       this.unproject(ndc[0], ndc[1], ndc[2], invProjView)
     );
 
     // Camera position in world space
-    const cameraPos: [number, number, number] = [
+    const cameraPosition: [number, number, number] = [
       camera.position.x,
       camera.position.y,
       camera.position.z,
@@ -156,8 +152,9 @@ export class FrustumGeometry implements Geometry {
     const colors: number[] = [];
 
     for (const [startIdx, endIdx, colorType] of lineSegments) {
-      const start = startIdx === -1 ? cameraPos : worldCorners[startIdx];
-      const end = endIdx === -1 ? cameraPos : worldCorners[endIdx];
+      const start =
+        startIdx === -1 ? cameraPosition : frustumWorldCorners[startIdx];
+      const end = endIdx === -1 ? cameraPosition : frustumWorldCorners[endIdx];
       const color = colorMap[colorType];
 
       // Start vertex
@@ -183,16 +180,32 @@ export class FrustumGeometry implements Geometry {
     z: number,
     invProjView: Matrix4
   ): [number, number, number] {
-    const m = invProjView.data;
+    const matrixData = invProjView.data;
 
     // Apply inverse projection-view matrix to NDC point
-    const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
-    const wy = m[1] * x + m[5] * y + m[9] * z + m[13];
-    const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
-    const ww = m[3] * x + m[7] * y + m[11] * z + m[15];
+    const worldX =
+      matrixData[0] * x +
+      matrixData[4] * y +
+      matrixData[8] * z +
+      matrixData[12];
+    const worldY =
+      matrixData[1] * x +
+      matrixData[5] * y +
+      matrixData[9] * z +
+      matrixData[13];
+    const worldZ =
+      matrixData[2] * x +
+      matrixData[6] * y +
+      matrixData[10] * z +
+      matrixData[14];
+    const worldW =
+      matrixData[3] * x +
+      matrixData[7] * y +
+      matrixData[11] * z +
+      matrixData[15];
 
     // Perspective divide
-    const invW = 1.0 / ww;
-    return [wx * invW, wy * invW, wz * invW];
+    const invW = 1.0 / worldW;
+    return [worldX * invW, worldY * invW, worldZ * invW];
   }
 }
