@@ -7,5 +7,5 @@ export interface Geometry {
   /**
    * @deprecated Use `positions` instead.
    */
-  readonly vertices: Float32Array;
+  readonly vertices?: Float32Array;
 }
