@@ -286,6 +286,10 @@ export class Renderer {
     this.device.queue.submit([commandEncoder.finish()]);
   }
 
+  /**
+   * Cleans up GPU resources and disconnects observers.
+   * Call this method when the renderer is no longer needed to prevent memory leaks.
+   */
   dispose(): void {
     this.resizeObserver.disconnect();
 
