@@ -1,4 +1,5 @@
 import type { PerspectiveCamera } from "./PerspectiveCamera";
+import { Color } from "@web-real/math";
 import {
   FrustumGeometry,
   type FrustumColors,
@@ -7,14 +8,14 @@ import { LineColorMaterial } from "../material/LineColorMaterial";
 import { Mesh } from "../Mesh";
 
 export interface CameraFrustumHelperOptions {
-  /** Color for the near plane edges (RGB, 0-1 range). Default: [1, 1, 0] (yellow) */
-  nearColor?: [number, number, number];
-  /** Color for the far plane edges (RGB, 0-1 range). Default: [1, 0.5, 0] (orange) */
-  farColor?: [number, number, number];
-  /** Color for the connecting edges (RGB, 0-1 range). Default: [0.5, 0.5, 0.5] (gray) */
-  sideColor?: [number, number, number];
-  /** Color for the lines from camera to near plane (RGB, 0-1 range). Default: [0.3, 0.3, 0.3] (dark gray) */
-  coneColor?: [number, number, number];
+  /** Color for the near plane edges. Default: yellow */
+  nearColor?: Color;
+  /** Color for the far plane edges. Default: orange */
+  farColor?: Color;
+  /** Color for the connecting edges. Default: gray */
+  sideColor?: Color;
+  /** Color for the lines from camera to near plane. Default: dark gray */
+  coneColor?: Color;
 }
 
 /**
@@ -31,10 +32,10 @@ export interface CameraFrustumHelperOptions {
  * ```typescript
  * const debugCamera = new PerspectiveCamera(60, 1.5, 0.1, 100);
  * const helper = new CameraFrustumHelper(debugCamera, {
- *   nearColor: [0, 1, 0],   // Green near plane
- *   farColor: [1, 0, 0],    // Red far plane
- *   sideColor: [0, 0, 1],   // Blue sides
- *   coneColor: [1, 1, 1],   // White cone
+ *   nearColor: Color.GREEN,
+ *   farColor: Color.RED,
+ *   sideColor: Color.BLUE,
+ *   coneColor: Color.WHITE,
  * });
  * scene.add(helper);
  *
@@ -53,10 +54,10 @@ export class CameraFrustumHelper extends Mesh {
     options: CameraFrustumHelperOptions = {}
   ) {
     const frustumColors: FrustumColors = {
-      near: options.nearColor ?? [1, 1, 0],
-      far: options.farColor ?? [1, 0.5, 0],
-      sides: options.sideColor ?? [0.5, 0.5, 0.5],
-      cone: options.coneColor ?? [0.3, 0.3, 0.3],
+      near: options.nearColor ?? new Color(1, 1, 0),
+      far: options.farColor ?? new Color(1, 0.5, 0),
+      sides: options.sideColor ?? new Color(0.5, 0.5, 0.5),
+      cone: options.coneColor ?? new Color(0.3, 0.3, 0.3),
     };
 
     const geometry = new FrustumGeometry(camera, frustumColors);

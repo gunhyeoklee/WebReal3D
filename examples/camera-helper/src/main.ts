@@ -8,17 +8,8 @@ import {
   PerspectiveCamera,
   CameraFrustumHelper,
 } from "@web-real/core";
-import { Vector3 } from "@web-real/math";
+import { Color, Vector3 } from "@web-real/math";
 import GUI from "lil-gui";
-
-type FaceColors = [
-  [number, number, number],
-  [number, number, number],
-  [number, number, number],
-  [number, number, number],
-  [number, number, number],
-  [number, number, number]
-];
 
 interface Params {
   // Cube params
@@ -76,11 +67,11 @@ async function main() {
   try {
     const engineObserver = await Engine.create({ canvas: canvasObserver });
     const rendererObserver = new Renderer(engineObserver);
-    rendererObserver.setClearColor(0.1, 0.1, 0.1);
+    rendererObserver.setClearColor([0.1, 0.1, 0.1]);
 
     const engineMain = await Engine.create({ canvas: canvasMain });
     const rendererMain = new Renderer(engineMain);
-    rendererMain.setClearColor(0.15, 0.1, 0.1);
+    rendererMain.setClearColor([0.15, 0.1, 0.1]);
 
     const params: Params = {
       // Cube params
@@ -105,13 +96,14 @@ async function main() {
 
     const gui = createGUI(params);
 
-    const faceColors: FaceColors = [
-      [1.0, 0.3, 0.3], // Front - Red
-      [0.3, 1.0, 0.3], // Back - Green
-      [0.3, 0.3, 1.0], // Top - Blue
-      [1.0, 1.0, 0.3], // Bottom - Yellow
-      [1.0, 0.3, 1.0], // Right - Magenta
-      [0.3, 1.0, 1.0], // Left - Cyan
+    // Face colors using Color class
+    const faceColors = [
+      Color.fromHex("#ff4d4d"), // Front - Red
+      Color.fromHex("#4dff4d"), // Back - Green
+      Color.fromHex("#4d4dff"), // Top - Blue
+      Color.fromHex("#ffff4d"), // Bottom - Yellow
+      Color.fromHex("#ff4dff"), // Right - Magenta
+      Color.fromHex("#4dffff"), // Left - Cyan
     ];
 
     const sceneObserver = new Scene();
@@ -134,10 +126,10 @@ async function main() {
     mainCamera.lookAt(new Vector3(0, 0, 0));
 
     const cameraFrustumHelper = new CameraFrustumHelper(mainCamera, {
-      nearColor: [0, 1, 0], // Green - Near plane
-      farColor: [1, 0, 0], // Red - Far plane
-      sideColor: [1, 1, 0], // Yellow - Connecting edges
-      coneColor: [0.5, 0.5, 1], // Light blue - Camera to near plane
+      nearColor: Color.GREEN,
+      farColor: Color.RED,
+      sideColor: Color.YELLOW,
+      coneColor: Color.fromHex("#8080ff"), // Light blue
     });
     sceneObserver.add(cameraFrustumHelper);
 

@@ -1,3 +1,4 @@
+import { Color } from "@web-real/math";
 import type { Engine } from "./Engine";
 import type { Scene } from "./Scene";
 import type { Camera } from "./camera/Camera";
@@ -21,7 +22,7 @@ interface MeshGPUResources {
 export class Renderer {
   private engine: Engine;
   private depthTexture!: GPUTexture;
-  private clearColor: [number, number, number, number] = [0.1, 0.1, 0.1, 1.0];
+  private clearColor: Color = new Color(0.1, 0.1, 0.1, 1.0);
   private resizeObserver: ResizeObserver;
 
   private pipelineCache: Map<string, GPURenderPipeline> = new Map();
@@ -212,14 +213,13 @@ export class Renderer {
 
   /**
    * Sets the clear color for the render pass.
-   * @param r - Red component (0-1).
-   * @param g - Green component (0-1).
-   * @param b - Blue component (0-1).
-   * @param a - Alpha component (0-1), defaults to 1.0.
+   * @param color - Color instance or RGBA tuple [r, g, b] or [r, g, b, a].
    * @returns This renderer for chaining.
    */
-  setClearColor(r: number, g: number, b: number, a: number = 1.0): this {
-    this.clearColor = [r, g, b, a];
+  setClearColor(
+    color: Color | [number, number, number] | [number, number, number, number]
+  ): this {
+    this.clearColor = Color.from(color);
     return this;
   }
 
@@ -247,10 +247,10 @@ export class Renderer {
         {
           view: textureView,
           clearValue: {
-            r: this.clearColor[0],
-            g: this.clearColor[1],
-            b: this.clearColor[2],
-            a: this.clearColor[3],
+            r: this.clearColor.r,
+            g: this.clearColor.g,
+            b: this.clearColor.b,
+            a: this.clearColor.a,
           },
           loadOp: "clear",
           storeOp: "store",
@@ -287,12 +287,7 @@ export class Renderer {
         material instanceof BasicMaterial ||
         material instanceof LineMaterial
       ) {
-        const colorData = new Float32Array([
-          material.color[0],
-          material.color[1],
-          material.color[2],
-          1.0,
-        ]);
+        const colorData = material.color.toFloat32Array();
         this.device.queue.writeBuffer(
           resources.uniformBuffer,
           64,

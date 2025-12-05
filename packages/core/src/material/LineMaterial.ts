@@ -1,7 +1,8 @@
+import { Color } from "@web-real/math";
 import type { Material, VertexBufferLayout } from "./Material";
 
 export interface LineMaterialOptions {
-  color?: [number, number, number];
+  color?: [number, number, number] | Color;
 }
 
 /**
@@ -10,11 +11,13 @@ export interface LineMaterialOptions {
  */
 export class LineMaterial implements Material {
   readonly type = "line";
-  /** RGB color (0-1 range) */
-  readonly color: [number, number, number];
+  /** Color with RGBA components (Color instance, 0-1 range) */
+  readonly color: Color;
 
   constructor(options: LineMaterialOptions = {}) {
-    this.color = options.color ?? [1.0, 1.0, 1.0];
+    this.color = options.color
+      ? Color.from(options.color)
+      : new Color(1.0, 1.0, 1.0);
   }
 
   getVertexShader(): string {
