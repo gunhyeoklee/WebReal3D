@@ -26,6 +26,9 @@ export {
   DirectionalLight,
   DirectionalLightHelper,
   type DirectionalLightHelperOptions,
+  PointLight,
+  type AttenuationType,
+  PointLightHelper,
 } from "./light";
 export { Object3D } from "./Object3D";
 export { Scene } from "./Scene";

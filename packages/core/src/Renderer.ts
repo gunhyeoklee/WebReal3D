@@ -8,6 +8,8 @@ import { BlinnPhongMaterial } from "./material/BlinnPhongMaterial";
 import { LineMaterial } from "./material/LineMaterial";
 import { Mesh } from "./Mesh";
 import { DirectionalLight } from "./light/DirectionalLight";
+import { PointLight } from "./light/PointLight";
+import { Light } from "./light/Light";
 
 interface MeshGPUResources {
   vertexBuffer: GPUBuffer;
@@ -316,27 +318,91 @@ export class Renderer {
           colorAndShininessData as Float32Array<ArrayBuffer>
         );
 
-        // Write light data at offset 144 (lightDirection) and 160 (lightColor)
-        let light: DirectionalLight | undefined;
+        // Write light data: offset 144 (lightPosition), 160 (lightColor), 192 (lightParams), 208 (lightTypes)
+        let light: Light | undefined;
         scene.traverse((obj) => {
-          if (obj instanceof DirectionalLight && !light) {
+          if (
+            (obj instanceof DirectionalLight || obj instanceof PointLight) &&
+            !light
+          ) {
             light = obj;
           }
         });
 
         if (light) {
-          const lightDirData = new Float32Array([
-            light.direction.x,
-            light.direction.y,
-            light.direction.z,
-            0,
-          ]);
-          this.device.queue.writeBuffer(
-            resources.uniformBuffer,
-            144,
-            lightDirData as Float32Array<ArrayBuffer>
-          );
+          if (light instanceof DirectionalLight) {
+            // Directional light: xyz = direction
+            const lightPositionData = new Float32Array([
+              light.direction.x,
+              light.direction.y,
+              light.direction.z,
+              0,
+            ]);
+            this.device.queue.writeBuffer(
+              resources.uniformBuffer,
+              144,
+              lightPositionData as Float32Array<ArrayBuffer>
+            );
 
+            // Light params: not used for directional light
+            const lightParamsData = new Float32Array([0, 0, 0, 0]);
+            this.device.queue.writeBuffer(
+              resources.uniformBuffer,
+              192,
+              lightParamsData as Float32Array<ArrayBuffer>
+            );
+
+            // Light types: x = 0 (directional), y = 0 (unused)
+            const lightTypesData = new Float32Array([0, 0, 0, 0]);
+            this.device.queue.writeBuffer(
+              resources.uniformBuffer,
+              208,
+              lightTypesData as Float32Array<ArrayBuffer>
+            );
+          } else if (light instanceof PointLight) {
+            // Point light: xyz = world position
+            light.updateWorldMatrix(true, false);
+            const lightPositionData = new Float32Array([
+              light.worldMatrix.data[12],
+              light.worldMatrix.data[13],
+              light.worldMatrix.data[14],
+              0,
+            ]);
+            this.device.queue.writeBuffer(
+              resources.uniformBuffer,
+              144,
+              lightPositionData as Float32Array<ArrayBuffer>
+            );
+
+            // Light params: x = range, y = attenuation param
+            const attenuationFactors = light.getAttenuationFactors();
+            const lightParamsData = new Float32Array([
+              attenuationFactors[0], // range
+              attenuationFactors[1], // param
+              0,
+              0,
+            ]);
+            this.device.queue.writeBuffer(
+              resources.uniformBuffer,
+              192,
+              lightParamsData as Float32Array<ArrayBuffer>
+            );
+
+            // Light types: x = 1 (point), y = attenuation type
+            const lightTypesData = new Float32Array([
+              1, // light type: point
+              attenuationFactors[3], // attenuation type
+              0,
+              0,
+            ]);
+            this.device.queue.writeBuffer(
+              resources.uniformBuffer,
+              208,
+              lightTypesData as Float32Array<ArrayBuffer>
+            );
+          }
+
+          // Light color (common for all light types)
           const lightColorData = new Float32Array([
             light.color.r,
             light.color.g,
@@ -349,18 +415,30 @@ export class Renderer {
             lightColorData as Float32Array<ArrayBuffer>
           );
         } else {
-          // Default light if none in scene
-          const defaultLightDir = new Float32Array([0, -1, 0, 0]);
+          // Default light if none in scene (directional from above)
+          const defaultLightPosition = new Float32Array([0, -1, 0, 0]);
           const defaultLightColor = new Float32Array([1, 1, 1, 1]);
+          const defaultLightParams = new Float32Array([0, 0, 0, 0]);
+          const defaultLightTypes = new Float32Array([0, 0, 0, 0]); // directional
           this.device.queue.writeBuffer(
             resources.uniformBuffer,
             144,
-            defaultLightDir as Float32Array<ArrayBuffer>
+            defaultLightPosition as Float32Array<ArrayBuffer>
           );
           this.device.queue.writeBuffer(
             resources.uniformBuffer,
             160,
             defaultLightColor as Float32Array<ArrayBuffer>
+          );
+          this.device.queue.writeBuffer(
+            resources.uniformBuffer,
+            192,
+            defaultLightParams as Float32Array<ArrayBuffer>
+          );
+          this.device.queue.writeBuffer(
+            resources.uniformBuffer,
+            208,
+            defaultLightTypes as Float32Array<ArrayBuffer>
           );
         }
 
