@@ -50,19 +50,26 @@ class DirectionalLightHelperGeometry implements Geometry {
     // Calculate perpendicular vectors for arrowhead
     // Find a vector not parallel to direction
     let perpX: number, perpY: number, perpZ: number;
-    if (Math.abs(dir.y) < 0.9) {
-      // Cross with up vector (0, 1, 0)
-      perpX = dir.z;
-      perpY = 0;
-      perpZ = -dir.x;
-    } else {
-      // Cross with right vector (1, 0, 0)
+    // Try cross with up vector (0, 1, 0)
+    perpX = dir.z;
+    perpY = 0;
+    perpZ = -dir.x;
+    let perpLen = Math.sqrt(perpX * perpX + perpY * perpY + perpZ * perpZ);
+    if (perpLen < 1e-6) {
+      // If direction is parallel to up, cross with right vector (1, 0, 0)
       perpX = 0;
       perpY = -dir.z;
       perpZ = dir.y;
+      perpLen = Math.sqrt(perpX * perpX + perpY * perpY + perpZ * perpZ);
+      if (perpLen < 1e-6) {
+        // If still zero (direction is zero vector), default to (1,0,0)
+        perpX = 1;
+        perpY = 0;
+        perpZ = 0;
+        perpLen = 1;
+      }
     }
     // Normalize
-    const perpLen = Math.sqrt(perpX * perpX + perpY * perpY + perpZ * perpZ);
     perpX /= perpLen;
     perpY /= perpLen;
     perpZ /= perpLen;
