@@ -102,7 +102,7 @@ export class OrbitCameraController {
   }
 
   get target(): Vector3 {
-    return this._target;
+    return this._target.clone();
   }
 
   get radius(): number {
