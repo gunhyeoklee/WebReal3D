@@ -11,7 +11,7 @@ export interface LineMaterialOptions {
  */
 export class LineMaterial implements Material {
   readonly type = "line";
-  /** RGB color (0-1 range) */
+  /** Color with RGBA components (Color instance, 0-1 range) */
   readonly color: Color;
 
   constructor(options: LineMaterialOptions = {}) {
