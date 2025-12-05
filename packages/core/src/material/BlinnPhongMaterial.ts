@@ -25,6 +25,7 @@ export class BlinnPhongMaterial implements Material {
 struct Uniforms {
   mvpMatrix: mat4x4f,
   modelMatrix: mat4x4f,
+  normalMatrix: mat4x4f,      // inverse transpose of model matrix for correct normal transformation
   colorAndShininess: vec4f,
   lightPosition: vec4f,       // xyz = position (point) or direction (directional)
   lightColor: vec4f,          // rgb = color, a = intensity
@@ -50,8 +51,8 @@ struct VertexOutput {
 fn main(input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
   output.position = uniforms.mvpMatrix * vec4f(input.position, 1.0);
-  // Transform normal to world space (assuming uniform scale)
-  output.normal = (uniforms.modelMatrix * vec4f(input.normal, 0.0)).xyz;
+  // Transform normal to world space using normal matrix (handles non-uniform scaling correctly)
+  output.normal = (uniforms.normalMatrix * vec4f(input.normal, 0.0)).xyz;
   // Calculate world position for specular
   output.worldPosition = (uniforms.modelMatrix * vec4f(input.position, 1.0)).xyz;
   return output;
@@ -64,6 +65,7 @@ fn main(input: VertexInput) -> VertexOutput {
 struct Uniforms {
   mvpMatrix: mat4x4f,
   modelMatrix: mat4x4f,
+  normalMatrix: mat4x4f,      // inverse transpose of model matrix for correct normal transformation
   colorAndShininess: vec4f,
   lightPosition: vec4f,       // xyz = position (point) or direction (directional)
   lightColor: vec4f,          // rgb = color, a = intensity
@@ -162,9 +164,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     };
   }
 
-  // Layout: mat4x4f mvp (64B) + mat4x4f model (64B) + vec4f colorAndShininess (16B) + vec4f lightPosition (16B) + vec4f lightColor (16B) + vec4f cameraPosition (16B) + vec4f lightParams (16B) + vec4f lightTypes (16B) = 224 bytes
+  // Layout: mat4x4f mvp (64B) + mat4x4f model (64B) + mat4x4f normalMatrix (64B) + vec4f colorAndShininess (16B) + vec4f lightPosition (16B) + vec4f lightColor (16B) + vec4f cameraPosition (16B) + vec4f lightParams (16B) + vec4f lightTypes (16B) = 288 bytes
   getUniformBufferSize(): number {
-    return 224;
+    return 288;
   }
 
   getPrimitiveTopology(): GPUPrimitiveTopology {
@@ -175,9 +177,10 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
    * Writes material-specific uniform data (color + shininess) to the buffer.
    * MVP matrix should be written separately at offset 0.
    * Model matrix should be written at offset 64.
+   * Normal matrix should be written at offset 128.
    * Light data should be written by the Renderer.
    * @param buffer - DataView of the uniform buffer
-   * @param offset - Byte offset to start writing (default: 128, after MVP + Model matrices)
+   * @param offset - Byte offset to start writing (default: 192, after MVP + Model + Normal matrices)
    */
   writeUniformData(buffer: DataView, offset: number = 128): void {
     buffer.setFloat32(offset, this.color.r, true);
