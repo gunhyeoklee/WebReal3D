@@ -10,8 +10,9 @@ export class DirectionalLight extends Light {
     intensity: number = 1
   ) {
     super(color, intensity);
-    if (direction.length() < 1e-8) {
+    if (direction.length < 1e-8) {
       throw new Error("DirectionalLight: direction vector must be non-zero.");
     }
     this.direction = direction.normalize();
+  }
 }

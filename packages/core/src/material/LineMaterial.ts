@@ -1,5 +1,6 @@
 import { Color } from "@web-real/math";
 import type { Material, VertexBufferLayout } from "./Material";
+import { ShaderLib } from "../shaders";
 
 export interface LineMaterialOptions {
   color?: [number, number, number] | Color;
@@ -21,45 +22,11 @@ export class LineMaterial implements Material {
   }
 
   getVertexShader(): string {
-    return /* wgsl */ `
-struct Uniforms {
-  mvpMatrix: mat4x4f,
-  color: vec4f,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-struct VertexInput {
-  @location(0) position: vec3f,
-}
-
-struct VertexOutput {
-  @builtin(position) position: vec4f,
-}
-
-@vertex
-fn main(input: VertexInput) -> VertexOutput {
-  var output: VertexOutput;
-  output.position = uniforms.mvpMatrix * vec4f(input.position, 1.0);
-  return output;
-}
-`;
+    return ShaderLib.get(this.type).vertex;
   }
 
   getFragmentShader(): string {
-    return /* wgsl */ `
-struct Uniforms {
-  mvpMatrix: mat4x4f,
-  color: vec4f,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-@fragment
-fn main() -> @location(0) vec4f {
-  return uniforms.color;
-}
-`;
+    return ShaderLib.get(this.type).fragment;
   }
 
   getVertexBufferLayout(): VertexBufferLayout {

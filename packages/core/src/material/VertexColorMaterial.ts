@@ -1,5 +1,6 @@
 import { Color } from "@web-real/math";
 import type { Material, VertexBufferLayout } from "./Material";
+import { ShaderLib } from "../shaders";
 
 const DEFAULT_FACE_COLORS: Color[] = [
   Color.fromHex("#ff4d4d"), // Front - Red
@@ -66,44 +67,11 @@ export class VertexColorMaterial implements Material {
   }
 
   getVertexShader(): string {
-    return /* wgsl */ `
-struct Uniforms {
-  mvpMatrix: mat4x4f,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-struct VertexInput {
-  @location(0) position: vec3f,
-  @location(1) color: vec3f,
-}
-
-struct VertexOutput {
-  @builtin(position) position: vec4f,
-  @location(0) color: vec3f,
-}
-
-@vertex
-fn main(input: VertexInput) -> VertexOutput {
-  var output: VertexOutput;
-  output.position = uniforms.mvpMatrix * vec4f(input.position, 1.0);
-  output.color = input.color;
-  return output;
-}
-`;
+    return ShaderLib.get(this.type).vertex;
   }
 
   getFragmentShader(): string {
-    return /* wgsl */ `
-struct FragmentInput {
-  @location(0) color: vec3f,
-}
-
-@fragment
-fn main(input: FragmentInput) -> @location(0) vec4f {
-  return vec4f(input.color, 1.0);
-}
-`;
+    return ShaderLib.get(this.type).fragment;
   }
 
   getVertexBufferLayout(): VertexBufferLayout {
