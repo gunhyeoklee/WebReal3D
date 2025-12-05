@@ -7,17 +7,8 @@ import {
   Scene,
   PerspectiveCamera,
 } from "@web-real/core";
-import { Vector3 } from "@web-real/math";
+import { Color, Vector3 } from "@web-real/math";
 import GUI from "lil-gui";
-
-type FaceColors = [
-  [number, number, number],
-  [number, number, number],
-  [number, number, number],
-  [number, number, number],
-  [number, number, number],
-  [number, number, number]
-];
 
 interface CubeParams {
   rotationX: number;
@@ -36,7 +27,7 @@ async function main() {
   try {
     const engine = await Engine.create({ canvas });
     const renderer = new Renderer(engine);
-    renderer.setClearColor(0.1, 0.1, 0.1);
+    renderer.setClearColor([0.1, 0.1, 0.1]);
 
     const params: CubeParams = {
       rotationX: 0,
@@ -71,13 +62,14 @@ async function main() {
     cameraFolder.add(params, "cameraDistance", 2, 15).name("Distance");
     cameraFolder.add(params, "fov", 30, 120).name("FOV");
 
-    const faceColors: FaceColors = [
-      [1.0, 0.3, 0.3], // Front - Red
-      [0.3, 1.0, 0.3], // Back - Green
-      [0.3, 0.3, 1.0], // Top - Blue
-      [1.0, 1.0, 0.3], // Bottom - Yellow
-      [1.0, 0.3, 1.0], // Right - Magenta
-      [0.3, 1.0, 1.0], // Left - Cyan
+    // Face colors using Color class
+    const faceColors = [
+      Color.fromHex("#ff4d4d"), // Front - Red
+      Color.fromHex("#4dff4d"), // Back - Green
+      Color.fromHex("#4d4dff"), // Top - Blue
+      Color.fromHex("#ffff4d"), // Bottom - Yellow
+      Color.fromHex("#ff4dff"), // Right - Magenta
+      Color.fromHex("#4dffff"), // Left - Cyan
     ];
 
     const scene = new Scene();
