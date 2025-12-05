@@ -7,7 +7,7 @@ export interface BasicMaterialOptions {
 
 export class BasicMaterial implements Material {
   readonly type = "basic";
-  /** RGB color (0-1 range) */
+  /** RGBA color (Color instance, 0-1 range) */
   readonly color: Color;
 
   constructor(options: BasicMaterialOptions = {}) {
