@@ -150,12 +150,11 @@ async function main() {
       far: 100,
     });
 
-    // Use OrbitCameraController to control the Observer camera
-    const orbitController = new OrbitCameraController(
-      observerCamera,
     const radius = Math.sqrt(
       params.observerX ** 2 + params.observerY ** 2 + params.observerZ ** 2
     );
+
+    // Use OrbitCameraController to control the Observer camera
     const orbitController = new OrbitCameraController(
       observerCamera,
       canvasObserver,
