@@ -1,12 +1,12 @@
 import type { Geometry } from "./Geometry";
 import type { PerspectiveCamera } from "../camera/PerspectiveCamera";
-import { Matrix4 } from "@web-real/math";
+import { Color, Matrix4 } from "@web-real/math";
 
 export interface FrustumColors {
-  near?: [number, number, number];
-  far?: [number, number, number];
-  sides?: [number, number, number];
-  cone?: [number, number, number];
+  near?: Color;
+  far?: Color;
+  sides?: Color;
+  cone?: Color;
 }
 
 /**
@@ -27,7 +27,12 @@ export class FrustumGeometry implements Geometry {
   private readonly _normals: Float32Array;
   private readonly _indices: Uint16Array;
   private _vertexCount: number;
-  private _frustumColors: Required<FrustumColors>;
+  private _frustumColors: {
+    near: Color;
+    far: Color;
+    sides: Color;
+    cone: Color;
+  };
 
   constructor(camera: PerspectiveCamera, colors: FrustumColors = {}) {
     // Normals are not used for line rendering
@@ -38,10 +43,10 @@ export class FrustumGeometry implements Geometry {
     this._colors = new Float32Array(0);
     this._vertexCount = 0;
     this._frustumColors = {
-      near: colors.near ?? [1, 1, 0], // Yellow
-      far: colors.far ?? [1, 0.5, 0], // Orange
-      sides: colors.sides ?? [0.5, 0.5, 0.5], // Gray
-      cone: colors.cone ?? [0.3, 0.3, 0.3], // Dark gray
+      near: colors.near ?? new Color(1, 1, 0), // Yellow
+      far: colors.far ?? new Color(1, 0.5, 0), // Orange
+      sides: colors.sides ?? new Color(0.5, 0.5, 0.5), // Gray
+      cone: colors.cone ?? new Color(0.3, 0.3, 0.3), // Dark gray
     };
 
     this.update(camera);
@@ -164,11 +169,11 @@ export class FrustumGeometry implements Geometry {
 
       // Start vertex
       positions.push(start[0], start[1], start[2]);
-      colors.push(color[0], color[1], color[2]);
+      colors.push(color.r, color.g, color.b);
 
       // End vertex
       positions.push(end[0], end[1], end[2]);
-      colors.push(color[0], color[1], color[2]);
+      colors.push(color.r, color.g, color.b);
     }
 
     this._positions = new Float32Array(positions);

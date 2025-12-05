@@ -1,17 +1,18 @@
+import { Color } from "@web-real/math";
 import type { Material, VertexBufferLayout } from "./Material";
 
-const DEFAULT_FACE_COLORS: [number, number, number][] = [
-  [1.0, 0.3, 0.3], // Front - Red
-  [0.3, 1.0, 0.3], // Back - Green
-  [0.3, 0.3, 1.0], // Top - Blue
-  [1.0, 1.0, 0.3], // Bottom - Yellow
-  [1.0, 0.3, 1.0], // Right - Magenta
-  [0.3, 1.0, 1.0], // Left - Cyan
+const DEFAULT_FACE_COLORS: Color[] = [
+  Color.fromHex("#ff4d4d"), // Front - Red
+  Color.fromHex("#4dff4d"), // Back - Green
+  Color.fromHex("#4d4dff"), // Top - Blue
+  Color.fromHex("#ffff4d"), // Bottom - Yellow
+  Color.fromHex("#ff4dff"), // Right - Magenta
+  Color.fromHex("#4dffff"), // Left - Cyan
 ];
 
 export interface VertexColorMaterialOptions {
   colors?: Float32Array;
-  faceColors?: [number, number, number][];
+  faceColors?: Color[];
   verticesPerFace?: number;
 }
 
@@ -31,13 +32,13 @@ export class VertexColorMaterial implements Material {
   }
 
   private expandFaceColors(
-    faceColors: [number, number, number][],
+    faceColors: Color[],
     verticesPerFace: number
   ): Float32Array {
     const colors: number[] = [];
     for (const color of faceColors) {
       for (let i = 0; i < verticesPerFace; i++) {
-        colors.push(...color);
+        colors.push(color.r, color.g, color.b);
       }
     }
     return new Float32Array(colors);
@@ -49,13 +50,10 @@ export class VertexColorMaterial implements Material {
 
   /**
    * Updates face colors and regenerates per-vertex colors.
-   * @param faceColors - Array of RGB colors for each face
+   * @param faceColors - Array of Color objects for each face
    * @param verticesPerFace - Number of vertices per face (default: 4)
    */
-  setFaceColors(
-    faceColors: [number, number, number][],
-    verticesPerFace: number = 4
-  ): void {
+  setFaceColors(faceColors: Color[], verticesPerFace: number = 4): void {
     this._colors = this.expandFaceColors(faceColors, verticesPerFace);
   }
 

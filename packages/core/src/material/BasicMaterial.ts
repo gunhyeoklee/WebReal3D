@@ -1,16 +1,19 @@
+import { Color } from "@web-real/math";
 import type { Material, VertexBufferLayout } from "./Material";
 
 export interface BasicMaterialOptions {
-  color?: [number, number, number];
+  color?: [number, number, number] | Color;
 }
 
 export class BasicMaterial implements Material {
   readonly type = "basic";
   /** RGB color (0-1 range) */
-  readonly color: [number, number, number];
+  readonly color: Color;
 
   constructor(options: BasicMaterialOptions = {}) {
-    this.color = options.color ?? [1.0, 1.0, 1.0];
+    this.color = options.color
+      ? Color.from(options.color)
+      : new Color(1.0, 1.0, 1.0);
   }
 
   getVertexShader(): string {
@@ -97,9 +100,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
    * @param offset - Byte offset to start writing (default: 64, after MVP matrix)
    */
   writeUniformData(buffer: DataView, offset: number = 64): void {
-    buffer.setFloat32(offset, this.color[0], true);
-    buffer.setFloat32(offset + 4, this.color[1], true);
-    buffer.setFloat32(offset + 8, this.color[2], true);
-    buffer.setFloat32(offset + 12, 1.0, true); // alpha
+    buffer.setFloat32(offset, this.color.r, true);
+    buffer.setFloat32(offset + 4, this.color.g, true);
+    buffer.setFloat32(offset + 8, this.color.b, true);
+    buffer.setFloat32(offset + 12, this.color.a, true);
   }
 }
