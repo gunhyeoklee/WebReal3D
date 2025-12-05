@@ -139,6 +139,10 @@ export class Color {
       h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     }
 
+    if (h.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(h)) {
+       throw new Error(`Invalid hex color format: ${hex}`);
+    }
+
     const r = parseInt(h.slice(0, 2), 16) / 255;
     const g = parseInt(h.slice(2, 4), 16) / 255;
     const b = parseInt(h.slice(4, 6), 16) / 255;
