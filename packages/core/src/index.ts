@@ -20,6 +20,7 @@ export {
   LineMaterial,
   LineColorMaterial,
 } from "./material";
+export { ShaderLib, type ShaderSource } from "./shaders";
 export * from "./camera";
 export {
   Light,
