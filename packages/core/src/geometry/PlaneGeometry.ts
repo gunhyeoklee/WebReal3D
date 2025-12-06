@@ -31,6 +31,29 @@ export interface PlaneGeometryOptions {
   orientation?: PlaneOrientation;
 }
 
+/**
+ * Represents a plane geometry, which is a flat, two-dimensional surface in 3D space.
+ * The plane can be oriented in the XY, XZ, or YZ plane, and subdivided into segments.
+ *
+ * @example
+ * ```ts
+ * // Create a plane geometry of size 2x2 in the XZ orientation with 4 segments
+ * const plane = new PlaneGeometry({
+ *   width: 2,
+ *   height: 2,
+ *   widthSegments: 2,
+ *   heightSegments: 2,
+ *   orientation: "XZ"
+ * });
+ * ```
+ *
+ * @param {PlaneGeometryOptions} [options] - Options to configure the plane geometry.
+ * @param {number} [options.width=1] - The width of the plane.
+ * @param {number} [options.height=1] - The height of the plane.
+ * @param {number} [options.widthSegments=1] - Number of segmented faces along the width.
+ * @param {number} [options.heightSegments=1] - Number of segmented faces along the height.
+ * @param {PlaneOrientation} [options.orientation="XY"] - The orientation of the plane.
+ */
 export class PlaneGeometry implements Geometry {
   private readonly _positions: Float32Array;
   private readonly _normals: Float32Array;
