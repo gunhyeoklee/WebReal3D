@@ -6,6 +6,7 @@ import type { Material } from "./material/Material";
 import { BasicMaterial } from "./material/BasicMaterial";
 import { BlinnPhongMaterial } from "./material/BlinnPhongMaterial";
 import { LineMaterial } from "./material/LineMaterial";
+import { ShaderMaterial } from "./material/ShaderMaterial";
 import { Mesh } from "./Mesh";
 import { DirectionalLight } from "./light/DirectionalLight";
 import { PointLight } from "./light/PointLight";
@@ -464,6 +465,24 @@ export class Renderer {
           240,
           cameraPosData as Float32Array<ArrayBuffer>
         );
+      } else if (material instanceof ShaderMaterial) {
+        // Call custom uniform writer if provided
+        if (material.writeUniformData) {
+          const uniformData = new ArrayBuffer(material.getUniformBufferSize());
+          const dataView = new DataView(uniformData);
+
+          // Call the user-provided callback to write custom uniform data
+          material.writeUniformData(dataView, 64);
+
+          // Write the custom uniform data to GPU (starting at offset 64, after MVP)
+          this.device.queue.writeBuffer(
+            resources.uniformBuffer,
+            64,
+            uniformData,
+            64, // source offset
+            material.getUniformBufferSize() - 64 // size to copy
+          );
+        }
       }
 
       passEncoder.setPipeline(pipeline);
