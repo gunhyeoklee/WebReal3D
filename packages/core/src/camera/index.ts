@@ -12,6 +12,10 @@ export {
   type CameraFrustumHelperOptions,
 } from "./CameraFrustumHelper";
 export {
+  OrthographicCameraHelper,
+  type OrthographicCameraHelperOptions,
+} from "./OrthographicCameraHelper";
+export {
   OrbitCameraController,
   type OrbitCameraControllerOptions,
 } from "./OrbitCameraController";
