@@ -6,7 +6,7 @@ import {
   Mesh,
   Scene,
   PerspectiveCamera,
-  CameraFrustumHelper,
+  PerspectiveCameraHelper,
   OrbitCameraController,
 } from "@web-real/core";
 import { Color } from "@web-real/math";
@@ -133,13 +133,13 @@ async function main() {
     );
 
     // Create frustum helper AFTER orbit controller so camera is in correct position
-    const cameraFrustumHelper = new CameraFrustumHelper(mainCamera, {
+    const perspectiveCameraHelper = new PerspectiveCameraHelper(mainCamera, {
       nearColor: Color.GREEN,
       farColor: Color.RED,
       sideColor: Color.YELLOW,
       coneColor: Color.fromHex("#8080ff"), // Light blue
     });
-    sceneObserver.add(cameraFrustumHelper);
+    sceneObserver.add(perspectiveCameraHelper);
 
     const observerCamera = new PerspectiveCamera({
       fov: params.observerFov,
@@ -195,8 +195,8 @@ async function main() {
       mainCamera.far = params.mainFar;
 
       // Update frustum helper
-      cameraFrustumHelper.update();
-      cameraFrustumHelper.visible = params.showFrustum;
+      perspectiveCameraHelper.update();
+      perspectiveCameraHelper.visible = params.showFrustum;
 
       // Render both views
       rendererObserver.render(sceneObserver, observerCamera);

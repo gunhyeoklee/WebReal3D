@@ -8,9 +8,9 @@ export {
   type OrthographicCameraOptions,
 } from "./OrthographicCamera";
 export {
-  CameraFrustumHelper,
-  type CameraFrustumHelperOptions,
-} from "./CameraFrustumHelper";
+  PerspectiveCameraHelper,
+  type PerspectiveCameraHelperOptions,
+} from "./PerspectiveCameraHelper";
 export {
   OrthographicCameraHelper,
   type OrthographicCameraHelperOptions,
