@@ -1,8 +1,12 @@
 import type { Geometry } from "./Geometry";
+import { TangentCalculator } from "./TangentCalculator";
 
 export class BoxGeometry implements Geometry {
   private readonly _positions: Float32Array;
   private readonly _normals: Float32Array;
+  private readonly _uvs: Float32Array;
+  private readonly _tangents: Float32Array;
+  private readonly _bitangents: Float32Array;
   private readonly _indices: Uint16Array;
   private readonly _vertexCount: number;
   private readonly _indexCount: number;
@@ -23,12 +27,23 @@ export class BoxGeometry implements Geometry {
     public readonly heightSegments: number = 1,
     public readonly depthSegments: number = 1
   ) {
-    const { positions, normals, indices } = this.generateData();
+    const { positions, normals, uvs, indices } = this.generateData();
     this._positions = positions;
     this._normals = normals;
+    this._uvs = uvs;
     this._indices = indices;
     this._vertexCount = positions.length / 3;
     this._indexCount = indices.length;
+
+    // Calculate tangents and bitangents
+    const { tangents, bitangents } = TangentCalculator.calculate(
+      positions,
+      normals,
+      uvs,
+      indices
+    );
+    this._tangents = tangents;
+    this._bitangents = bitangents;
   }
 
   get positions(): Float32Array {
@@ -37,6 +52,18 @@ export class BoxGeometry implements Geometry {
 
   get normals(): Float32Array {
     return this._normals;
+  }
+
+  get uvs(): Float32Array {
+    return this._uvs;
+  }
+
+  get tangents(): Float32Array {
+    return this._tangents;
+  }
+
+  get bitangents(): Float32Array {
+    return this._bitangents;
   }
 
   get indices(): Uint16Array {
@@ -64,6 +91,7 @@ export class BoxGeometry implements Geometry {
     gridY: number,
     positions: number[],
     normals: number[],
+    uvs: number[],
     indices: number[]
   ): void {
     const segmentWidth = width / gridX;
@@ -93,6 +121,9 @@ export class BoxGeometry implements Geometry {
         normal[w] = depth > 0 ? 1 : -1;
 
         normals.push(normal["x"] || 0, normal["y"] || 0, normal["z"] || 0);
+
+        // Generate UV coordinates (0,0) at bottom-left, (1,1) at top-right
+        uvs.push(ix / gridX, 1 - iy / gridY);
       }
     }
 
@@ -114,10 +145,12 @@ export class BoxGeometry implements Geometry {
   private generateData(): {
     positions: Float32Array;
     normals: Float32Array;
+    uvs: Float32Array;
     indices: Uint16Array;
   } {
     const positions: number[] = [];
     const normals: number[] = [];
+    const uvs: number[] = [];
     const indices: number[] = [];
 
     // Build all six faces
@@ -134,6 +167,7 @@ export class BoxGeometry implements Geometry {
       this.heightSegments,
       positions,
       normals,
+      uvs,
       indices
     ); // px
     this.buildPlane(
@@ -149,6 +183,7 @@ export class BoxGeometry implements Geometry {
       this.heightSegments,
       positions,
       normals,
+      uvs,
       indices
     ); // nx
     this.buildPlane(
@@ -164,6 +199,7 @@ export class BoxGeometry implements Geometry {
       this.depthSegments,
       positions,
       normals,
+      uvs,
       indices
     ); // py
     this.buildPlane(
@@ -179,6 +215,7 @@ export class BoxGeometry implements Geometry {
       this.depthSegments,
       positions,
       normals,
+      uvs,
       indices
     ); // ny
     this.buildPlane(
@@ -194,6 +231,7 @@ export class BoxGeometry implements Geometry {
       this.heightSegments,
       positions,
       normals,
+      uvs,
       indices
     ); // pz
     this.buildPlane(
@@ -209,12 +247,14 @@ export class BoxGeometry implements Geometry {
       this.heightSegments,
       positions,
       normals,
+      uvs,
       indices
     ); // nz
 
     return {
       positions: new Float32Array(positions),
       normals: new Float32Array(normals),
+      uvs: new Float32Array(uvs),
       indices: new Uint16Array(indices),
     };
   }

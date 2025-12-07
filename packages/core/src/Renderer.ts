@@ -4,6 +4,7 @@ import type { Scene } from "./Scene";
 import type { Camera } from "./camera/Camera";
 import type { Material } from "./material/Material";
 import { BlinnPhongMaterial } from "./material/BlinnPhongMaterial";
+import { ParallaxMaterial } from "./material/ParallaxMaterial";
 import { Mesh } from "./Mesh";
 import { DirectionalLight } from "./light/DirectionalLight";
 import { PointLight } from "./light/PointLight";
@@ -15,6 +16,8 @@ interface MeshGPUResources {
   uniformBuffer: GPUBuffer;
   bindGroup: GPUBindGroup;
   materialType: string;
+  topology: GPUPrimitiveTopology;
+  indexCount: number;
 }
 
 /**
@@ -165,11 +168,14 @@ export class Renderer {
   ): MeshGPUResources {
     let resources = this.meshBuffers.get(mesh);
     const currentMaterialType = mesh.material.type;
+    const currentTopology = mesh.material.getPrimitiveTopology();
 
-    // Invalidate resources if material type changed or mesh needs update
+    // Invalidate resources if material type, topology changed, or mesh needs update
     if (
       resources &&
-      (resources.materialType !== currentMaterialType || mesh.needsUpdate)
+      (resources.materialType !== currentMaterialType ||
+        resources.topology !== currentTopology ||
+        mesh.needsUpdate)
     ) {
       resources.vertexBuffer.destroy();
       resources.indexBuffer.destroy();
@@ -191,7 +197,11 @@ export class Renderer {
         vertexData as Float32Array<ArrayBuffer>
       );
 
-      const indexData = mesh.indices;
+      // Use wireframe indices if topology is line-list, otherwise use regular indices
+      const indexData =
+        currentTopology === "line-list"
+          ? mesh.getWireframeIndices()
+          : mesh.indices;
       const indexBuffer = this.device.createBuffer({
         label: "Mesh Index Buffer",
         size: indexData.byteLength,
@@ -210,15 +220,39 @@ export class Renderer {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
 
+      // Create bind group entries based on material type
+      const bindGroupEntries: GPUBindGroupEntry[] = [
+        {
+          binding: 0,
+          resource: { buffer: uniformBuffer },
+        },
+      ];
+
+      // Add texture and sampler for materials with texture support
+      if (mesh.material.getTextures) {
+        const textures = mesh.material.getTextures(this.device);
+
+        if (textures.length > 0) {
+          // Use shared sampler for all textures (binding 1)
+          bindGroupEntries.push({
+            binding: 1,
+            resource: textures[0].gpuSampler,
+          });
+
+          // Bind each texture starting from binding 2
+          textures.forEach((texture, index) => {
+            bindGroupEntries.push({
+              binding: 2 + index,
+              resource: texture.gpuTexture.createView(),
+            });
+          });
+        }
+      }
+
       const bindGroup = this.device.createBindGroup({
         label: "Mesh Bind Group",
         layout: pipeline.getBindGroupLayout(0),
-        entries: [
-          {
-            binding: 0,
-            resource: { buffer: uniformBuffer },
-          },
-        ],
+        entries: bindGroupEntries,
       });
 
       resources = {
@@ -227,6 +261,8 @@ export class Renderer {
         uniformBuffer,
         bindGroup,
         materialType: currentMaterialType,
+        topology: currentTopology,
+        indexCount: indexData.length,
       };
       this.meshBuffers.set(mesh, resources);
       this.trackedMeshes.add(mesh);
@@ -475,6 +511,49 @@ export class Renderer {
           240,
           cameraPosData as Float32Array<ArrayBuffer>
         );
+      } else if (material instanceof ParallaxMaterial) {
+        // ParallaxMaterial uses writeUniformData with camera position and light
+        const uniformData = new ArrayBuffer(material.getUniformBufferSize());
+        const dataView = new DataView(uniformData);
+
+        // Write model matrix at offset 64
+        for (let i = 0; i < 16; i++) {
+          dataView.setFloat32(64 + i * 4, mesh.worldMatrix.data[i], true);
+        }
+
+        // Get camera position
+        const cameraWorldMatrix = camera.worldMatrix.data;
+        const cameraPosData = new Float32Array([
+          cameraWorldMatrix[12],
+          cameraWorldMatrix[13],
+          cameraWorldMatrix[14],
+        ]);
+
+        // Find light in scene
+        let light: Light | undefined;
+        scene.traverse((obj) => {
+          if (
+            (obj instanceof DirectionalLight || obj instanceof PointLight) &&
+            !light
+          ) {
+            light = obj;
+          }
+        });
+
+        // Call material's writeUniformData method
+        material.writeUniformData(dataView, 64, cameraPosData, light);
+
+        // Write the uniform data to GPU (starting at offset 64, after MVP)
+        const customDataSize = material.getUniformBufferSize() - 64;
+        if (customDataSize > 0) {
+          this.device.queue.writeBuffer(
+            resources.uniformBuffer,
+            64,
+            uniformData,
+            64, // source offset - read from offset 64
+            customDataSize // size to copy
+          );
+        }
       } else if (material.writeUniformData) {
         // For materials that implement writeUniformData (BasicMaterial, LineMaterial, ShaderMaterial, etc.)
         // Use pre-allocated buffer from material if available, otherwise allocate temporarily
@@ -506,9 +585,9 @@ export class Renderer {
       passEncoder.setVertexBuffer(0, resources.vertexBuffer);
 
       // Use draw() for non-indexed geometry (e.g., lines), drawIndexed() otherwise
-      if (mesh.indexCount > 0) {
+      if (resources.indexCount > 0) {
         passEncoder.setIndexBuffer(resources.indexBuffer, "uint16");
-        passEncoder.drawIndexed(mesh.indexCount);
+        passEncoder.drawIndexed(resources.indexCount);
       } else {
         passEncoder.draw(mesh.vertexCount);
       }

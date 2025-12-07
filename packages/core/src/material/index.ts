@@ -14,3 +14,11 @@ export {
   type LineColorMaterialOptions,
 } from "./LineColorMaterial";
 export { ShaderMaterial, type ShaderMaterialOptions } from "./ShaderMaterial";
+export {
+  TextureMaterial,
+  type TextureMaterialOptions,
+} from "./TextureMaterial";
+export {
+  ParallaxMaterial,
+  type ParallaxMaterialOptions,
+} from "./ParallaxMaterial";
