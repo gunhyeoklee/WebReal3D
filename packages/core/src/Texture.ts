@@ -60,40 +60,67 @@ export class Texture {
    * @param device - The WebGPU device
    * @param url - URL to the image file
    * @returns A promise that resolves to a Texture instance
+   * @throws {Error} If the network request fails, image format is invalid, or GPU resources cannot be created
    */
   static async fromURL(device: GPUDevice, url: string): Promise<Texture> {
-    // Load the image
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const imageBitmap = await createImageBitmap(blob);
+    try {
+      // Load the image
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch texture from ${url}: ${response.status} ${response.statusText}`
+        );
+      }
 
-    // Create the GPU texture
-    const texture = device.createTexture({
-      size: [imageBitmap.width, imageBitmap.height, 1],
-      format: "rgba8unorm",
-      usage:
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
+      const blob = await response.blob();
 
-    // Upload the image data to the GPU
-    device.queue.copyExternalImageToTexture(
-      { source: imageBitmap },
-      { texture: texture },
-      [imageBitmap.width, imageBitmap.height]
-    );
+      // Validate content type
+      if (!blob.type.startsWith("image/")) {
+        throw new Error(
+          `Invalid image format from ${url}: expected image/* but got ${blob.type}`
+        );
+      }
 
-    // Create a sampler
-    const sampler = device.createSampler({
-      magFilter: "linear",
-      minFilter: "linear",
-      mipmapFilter: "linear",
-      addressModeU: "repeat",
-      addressModeV: "repeat",
-    });
+      const imageBitmap = await createImageBitmap(blob);
 
-    return new Texture(texture, sampler, imageBitmap.width, imageBitmap.height);
+      // Create the GPU texture
+      const texture = device.createTexture({
+        size: [imageBitmap.width, imageBitmap.height, 1],
+        format: "rgba8unorm",
+        usage:
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+
+      // Upload the image data to the GPU
+      device.queue.copyExternalImageToTexture(
+        { source: imageBitmap },
+        { texture: texture },
+        [imageBitmap.width, imageBitmap.height]
+      );
+
+      // Create a sampler
+      const sampler = device.createSampler({
+        magFilter: "linear",
+        minFilter: "linear",
+        mipmapFilter: "linear",
+        addressModeU: "repeat",
+        addressModeV: "repeat",
+      });
+
+      return new Texture(
+        texture,
+        sampler,
+        imageBitmap.width,
+        imageBitmap.height
+      );
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to load texture from ${url}: ${error.message}`);
+      }
+      throw new Error(`Failed to load texture from ${url}: Unknown error`);
+    }
   }
 
   /**

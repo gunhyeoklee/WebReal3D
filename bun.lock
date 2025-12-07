@@ -43,8 +43,8 @@
         "lil-gui": "^0.21.0",
       },
     },
-    "examples/plane": {
-      "name": "@examples/plane",
+    "examples/plane-geometry": {
+      "name": "@examples/plane-geometry",
       "dependencies": {
         "@web-real/core": "workspace:*",
         "@web-real/math": "workspace:*",
@@ -144,7 +144,7 @@
 
     "@examples/perspective-camera": ["@examples/perspective-camera@workspace:examples/perspective-camera"],
 
-    "@examples/plane": ["@examples/plane@workspace:examples/plane"],
+    "@examples/plane-geometry": ["@examples/plane-geometry@workspace:examples/plane-geometry"],
 
     "@examples/point-light": ["@examples/point-light@workspace:examples/point-light"],
 

@@ -247,21 +247,6 @@ export class Renderer {
             });
           });
         }
-      } else if (mesh.material.type === "texture") {
-        // Legacy single texture support (backwards compatibility)
-        const textureMaterial = mesh.material as any; // TextureMaterial
-        const texture = textureMaterial.getTexture();
-
-        bindGroupEntries.push(
-          {
-            binding: 1,
-            resource: texture.gpuSampler,
-          },
-          {
-            binding: 2,
-            resource: texture.gpuTexture.createView(),
-          }
-        );
       }
 
       const bindGroup = this.device.createBindGroup({
