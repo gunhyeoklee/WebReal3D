@@ -346,4 +346,187 @@ describe("Matrix4", () => {
       expect(normalMatrix.data[10]).toBeCloseTo(1);
     });
   });
+
+  describe("transformPoint", () => {
+    it("should apply identity transformation", () => {
+      const m = new Matrix4();
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformPoint(v);
+      expect(result.x).toBeCloseTo(1);
+      expect(result.y).toBeCloseTo(2);
+      expect(result.z).toBeCloseTo(3);
+    });
+
+    it("should apply translation to point", () => {
+      const m = Matrix4.translation(new Vector3(5, 10, 15));
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformPoint(v);
+      expect(result.x).toBeCloseTo(6);
+      expect(result.y).toBeCloseTo(12);
+      expect(result.z).toBeCloseTo(18);
+    });
+
+    it("should apply scaling to point", () => {
+      const m = Matrix4.scaling(new Vector3(2, 3, 4));
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformPoint(v);
+      expect(result.x).toBeCloseTo(2);
+      expect(result.y).toBeCloseTo(6);
+      expect(result.z).toBeCloseTo(12);
+    });
+
+    it("should apply rotation to point", () => {
+      const m = Matrix4.rotationZ(Math.PI / 2);
+      const v = new Vector3(1, 0, 0);
+      const result = m.transformPoint(v);
+      expect(result.x).toBeCloseTo(0);
+      expect(result.y).toBeCloseTo(1);
+      expect(result.z).toBeCloseTo(0);
+    });
+
+    it("should apply combined transformations in correct order", () => {
+      const m = new Matrix4()
+        .scale(new Vector3(2, 2, 2))
+        .translate(new Vector3(1, 0, 0));
+      const v = new Vector3(1, 0, 0);
+      const result = m.transformPoint(v);
+      // M = S * T (scale applied first to identity, then translate)
+      // Point: (S * T) * v = S * (T * v) = S * (2,0,0) = (4,0,0)
+      expect(result.x).toBeCloseTo(4);
+      expect(result.y).toBeCloseTo(0);
+      expect(result.z).toBeCloseTo(0);
+    });
+
+    it("should perform perspective division correctly", () => {
+      const m = Matrix4.perspective(Math.PI / 4, 1, 0.1, 100);
+      const v = new Vector3(0, 0, -1);
+      const result = m.transformPoint(v);
+      // After perspective transformation, coordinates should be normalized
+      expect(Number.isNaN(result.x)).toBe(false);
+      expect(Number.isNaN(result.y)).toBe(false);
+      expect(Number.isNaN(result.z)).toBe(false);
+    });
+
+    it("should handle perspective division when w is near zero", () => {
+      const m = new Matrix4();
+      // Manually create a matrix that produces w ≈ 0
+      m.data[3] = 0;
+      m.data[7] = 0;
+      m.data[11] = 0;
+      m.data[15] = 1e-11; // Very small w
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformPoint(v);
+      // Should not divide by w when it's too small
+      expect(Number.isNaN(result.x)).toBe(false);
+      expect(Number.isNaN(result.y)).toBe(false);
+      expect(Number.isNaN(result.z)).toBe(false);
+    });
+
+    it("should transform point through view-projection pipeline", () => {
+      const view = Matrix4.lookAt(
+        new Vector3(0, 0, 5),
+        new Vector3(0, 0, 0),
+        new Vector3(0, 1, 0)
+      );
+      const proj = Matrix4.perspective(Math.PI / 4, 1, 0.1, 100);
+      const vp = proj.multiply(view);
+      const v = new Vector3(0, 0, 0); // Point at origin
+      const result = vp.transformPoint(v);
+      expect(Number.isNaN(result.x)).toBe(false);
+      expect(Number.isNaN(result.y)).toBe(false);
+      expect(Number.isNaN(result.z)).toBe(false);
+    });
+  });
+
+  describe("transformDirection", () => {
+    it("should apply identity transformation", () => {
+      const m = new Matrix4();
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformDirection(v);
+      expect(result.x).toBeCloseTo(1);
+      expect(result.y).toBeCloseTo(2);
+      expect(result.z).toBeCloseTo(3);
+    });
+
+    it("should ignore translation when transforming direction", () => {
+      const m = Matrix4.translation(new Vector3(100, 200, 300));
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformDirection(v);
+      expect(result.x).toBeCloseTo(1);
+      expect(result.y).toBeCloseTo(2);
+      expect(result.z).toBeCloseTo(3);
+    });
+
+    it("should apply scaling to direction", () => {
+      const m = Matrix4.scaling(new Vector3(2, 3, 4));
+      const v = new Vector3(1, 2, 3);
+      const result = m.transformDirection(v);
+      expect(result.x).toBeCloseTo(2);
+      expect(result.y).toBeCloseTo(6);
+      expect(result.z).toBeCloseTo(12);
+    });
+
+    it("should apply rotation to direction", () => {
+      const m = Matrix4.rotationY(Math.PI / 2);
+      const v = new Vector3(1, 0, 0);
+      const result = m.transformDirection(v);
+      // Right-handed Y rotation by 90°: X-axis rotates to -Z-axis
+      expect(result.x).toBeCloseTo(0);
+      expect(result.y).toBeCloseTo(0);
+      expect(result.z).toBeCloseTo(-1);
+    });
+
+    it("should preserve direction length with rotation only", () => {
+      const m = Matrix4.rotationZ(Math.PI / 3);
+      const v = new Vector3(1, 0, 0);
+      const result = m.transformDirection(v);
+      expect(result.length).toBeCloseTo(v.length);
+    });
+
+    it("should transform unit vectors correctly", () => {
+      const m = Matrix4.rotationX(Math.PI / 2);
+      const up = new Vector3(0, 1, 0);
+      const result = m.transformDirection(up);
+      // Y-axis rotates to Z-axis when rotating around X by 90°
+      expect(result.x).toBeCloseTo(0);
+      expect(result.y).toBeCloseTo(0);
+      expect(result.z).toBeCloseTo(1);
+    });
+
+    it("should correctly transform normals with uniform scale", () => {
+      const m = Matrix4.scaling(new Vector3(2, 2, 2));
+      const normal = new Vector3(0, 1, 0);
+      const result = m.transformDirection(normal);
+      // Direction is scaled but still points up
+      expect(result.x).toBeCloseTo(0);
+      expect(result.y).toBeCloseTo(2);
+      expect(result.z).toBeCloseTo(0);
+    });
+
+    it("should transform forward vector correctly in view matrix", () => {
+      const m = Matrix4.lookAt(
+        new Vector3(0, 0, 5),
+        new Vector3(0, 0, 0),
+        new Vector3(0, 1, 0)
+      );
+      const forward = new Vector3(0, 0, -1);
+      const result = m.transformDirection(forward);
+      expect(Number.isNaN(result.x)).toBe(false);
+      expect(Number.isNaN(result.y)).toBe(false);
+      expect(Number.isNaN(result.z)).toBe(false);
+    });
+
+    it("should differ from transformPoint for translated matrices", () => {
+      const m = new Matrix4().translate(new Vector3(10, 20, 30));
+      const v = new Vector3(1, 0, 0);
+      const point = m.transformPoint(v);
+      const direction = m.transformDirection(v);
+      // Point should be translated
+      expect(point.x).toBeCloseTo(11);
+      // Direction should not be translated
+      expect(direction.x).toBeCloseTo(1);
+      expect(direction.y).toBeCloseTo(0);
+      expect(direction.z).toBeCloseTo(0);
+    });
+  });
 });
