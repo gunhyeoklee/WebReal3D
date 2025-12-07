@@ -11,7 +11,7 @@
         "vite": "^7.2.2",
       },
     },
-    "examples/cube": {
+    "examples/box-geometry": {
       "name": "@examples/cube",
       "dependencies": {
         "@web-real/core": "workspace:*",
@@ -71,11 +71,6 @@
       "dependencies": {
         "@web-real/core": "workspace:*",
         "@web-real/math": "workspace:*",
-      },
-      "devDependencies": {
-        "@webgpu/types": "^0.1.66",
-        "typescript": "~5.9.3",
-        "vite": "^7.2.2",
       },
     },
     "packages/core": {
@@ -141,7 +136,7 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
-    "@examples/cube": ["@examples/cube@workspace:examples/cube"],
+    "@examples/cube": ["@examples/cube@workspace:examples/box-geometry"],
 
     "@examples/cube-raw": ["@examples/cube-raw@workspace:examples/cube-raw"],
 

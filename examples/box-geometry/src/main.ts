@@ -7,7 +7,6 @@ import {
   Scene,
   PerspectiveCamera,
   DirectionalLight,
-  DirectionalLightHelper,
   OrbitCameraController,
 } from "@web-real/core";
 import { Color, Vector3 } from "@web-real/math";
@@ -21,17 +20,16 @@ interface CubeParams {
   rotationSpeed: number;
   scale: number;
   fov: number;
+  // Geometry params
+  width: number;
+  height: number;
+  depth: number;
+  widthSegments: number;
+  heightSegments: number;
+  depthSegments: number;
   // Material params
   shininess: number;
-  // Light params
-  lightPosX: number;
-  lightPosY: number;
-  lightPosZ: number;
-  lightDirX: number;
-  lightDirY: number;
-  lightDirZ: number;
-  lightIntensity: number;
-  showLightHelper: boolean;
+  wireframe: boolean;
 }
 
 async function main() {
@@ -46,24 +44,62 @@ async function main() {
       rotationX: 0,
       rotationY: 0,
       rotationZ: 0,
-      autoRotate: false,
+      autoRotate: true,
       rotationSpeed: 1.0,
       scale: 1.0,
       fov: 60,
+      // Geometry params
+      width: 2,
+      height: 2,
+      depth: 2,
+      widthSegments: 2,
+      heightSegments: 2,
+      depthSegments: 2,
       // Material params
       shininess: 32,
-      // Light params
-      lightPosX: 3,
-      lightPosY: 3,
-      lightPosZ: 3,
-      lightDirX: 1,
-      lightDirY: -1,
-      lightDirZ: 0.5,
-      lightIntensity: 1.0,
-      showLightHelper: true,
+      wireframe: false,
     };
 
-    const gui = new GUI({ title: "Cube Controls" });
+    const gui = new GUI({ title: "Box Geometry Controls" });
+
+    const geometryFolder = gui.addFolder("Geometry");
+    geometryFolder
+      .add(params, "width", 0.1, 5)
+      .name("Width")
+      .onChange(() => {
+        needsGeometryUpdate = true;
+      });
+    geometryFolder
+      .add(params, "height", 0.1, 5)
+      .name("Height")
+      .onChange(() => {
+        needsGeometryUpdate = true;
+      });
+    geometryFolder
+      .add(params, "depth", 0.1, 5)
+      .name("Depth")
+      .onChange(() => {
+        needsGeometryUpdate = true;
+      });
+    geometryFolder
+      .add(params, "widthSegments", 1, 10, 1)
+      .name("Width Segments")
+      .onChange(() => {
+        needsGeometryUpdate = true;
+      });
+    geometryFolder
+      .add(params, "heightSegments", 1, 10, 1)
+      .name("Height Segments")
+      .onChange(() => {
+        needsGeometryUpdate = true;
+      });
+    geometryFolder
+      .add(params, "depthSegments", 1, 10, 1)
+      .name("Depth Segments")
+      .onChange(() => {
+        needsGeometryUpdate = true;
+      });
+    geometryFolder.open();
 
     const rotationFolder = gui.addFolder("Rotation");
     rotationFolder
@@ -83,22 +119,18 @@ async function main() {
 
     const materialFolder = gui.addFolder("Material");
     materialFolder.add(params, "shininess", 1, 256).name("Shininess");
-
-    const cameraFolder = gui.addFolder("Camera");
-    cameraFolder.add(params, "fov", 30, 120).name("FOV");
-
-    const lightFolder = gui.addFolder("Directional Light");
-    lightFolder.add(params, "lightPosX", -5, 5).name("Position X");
-    lightFolder.add(params, "lightPosY", -5, 5).name("Position Y");
-    lightFolder.add(params, "lightPosZ", -5, 5).name("Position Z");
-    lightFolder.add(params, "lightDirX", -2, 2).name("Direction X");
-    lightFolder.add(params, "lightDirY", -2, 2).name("Direction Y");
-    lightFolder.add(params, "lightDirZ", -2, 2).name("Direction Z");
-    lightFolder.add(params, "lightIntensity", 0, 2).name("Intensity");
-    lightFolder.add(params, "showLightHelper").name("Show Helper");
+    materialFolder.add(params, "wireframe").name("Wireframe");
 
     const scene = new Scene();
-    const geometry = new BoxGeometry(2, 2, 2);
+    let geometry = new BoxGeometry(
+      params.width,
+      params.height,
+      params.depth,
+      params.widthSegments,
+      params.heightSegments,
+      params.depthSegments
+    );
+    let needsGeometryUpdate = false;
     const material = new BlinnPhongMaterial({
       color: [0.8, 0.2, 0.2],
       shininess: params.shininess,
@@ -108,22 +140,15 @@ async function main() {
 
     // Add directional light
     const light = new DirectionalLight(
-      new Vector3(params.lightDirX, params.lightDirY, params.lightDirZ),
+      new Vector3(1, -1, 0.5),
       new Color(1, 1, 1),
-      params.lightIntensity
+      1.0
     );
-    light.position.set(params.lightPosX, params.lightPosY, params.lightPosZ);
+    light.position.set(3, 3, 3);
     scene.add(light);
 
-    // Add light helper for debugging
-    const lightHelper = new DirectionalLightHelper(light, {
-      size: 2,
-      color: Color.YELLOW,
-    });
-    scene.add(lightHelper);
-
     const camera = new PerspectiveCamera({
-      fov: params.fov,
+      fov: 60,
       near: 0.1,
       far: 100,
     });
@@ -137,6 +162,20 @@ async function main() {
     });
 
     engine.run((deltaTime: number) => {
+      // Update geometry if parameters changed
+      if (needsGeometryUpdate) {
+        geometry = new BoxGeometry(
+          params.width,
+          params.height,
+          params.depth,
+          params.widthSegments,
+          params.heightSegments,
+          params.depthSegments
+        );
+        mesh.geometry = geometry;
+        needsGeometryUpdate = false;
+      }
+
       // Update mesh transform from params
       if (params.autoRotate) {
         params.rotationX += deltaTime * params.rotationSpeed * 0.5;
@@ -148,22 +187,7 @@ async function main() {
 
       // Update material from params
       material.shininess = params.shininess;
-
-      // Update camera FOV
-      camera.fov = params.fov;
-
-      // Update light from params
-      light.position.set(params.lightPosX, params.lightPosY, params.lightPosZ);
-      light.direction = new Vector3(
-        params.lightDirX,
-        params.lightDirY,
-        params.lightDirZ
-      ).normalize();
-      light.intensity = params.lightIntensity;
-
-      // Update light helper
-      lightHelper.update();
-      lightHelper.visible = params.showLightHelper;
+      material.wireframe = params.wireframe;
 
       // Render scene
       renderer.render(scene, camera);

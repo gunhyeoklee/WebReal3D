@@ -1,5 +1,5 @@
 {
-  "name": "@examples/plane",
+  "name": "@examples/plane-geometry",
   "private": true,
   "type": "module",
   "scripts": {
