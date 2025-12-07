@@ -200,8 +200,7 @@ export class SphereGeometry implements Geometry {
         positions.push(x, y, z);
 
         // Normal (normalized position vector from center)
-        const length = Math.sqrt(x * x + y * y + z * z);
-        normals.push(x / length, y / length, z / length);
+        normals.push(x / this.radius, y / this.radius, z / this.radius);
 
         // UV
         uvs.push(u + uOffset, 1 - v);
