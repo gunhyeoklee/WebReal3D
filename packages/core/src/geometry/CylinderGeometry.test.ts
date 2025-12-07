@@ -274,7 +274,6 @@ describe("CylinderGeometry", () => {
       // Check first few and last few vertices are at correct radius
       for (let i = 0; i < bodyVertexCount; i++) {
         const x = cylinder.positions[i * 3];
-        const y = cylinder.positions[i * 3 + 1];
         const z = cylinder.positions[i * 3 + 2];
 
         // Calculate distance from Y-axis (radius in XZ plane)
