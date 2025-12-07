@@ -297,7 +297,6 @@ describe("CylinderGeometry", () => {
       });
 
       // Check vertices at different heights have interpolated radii
-      const bodyVertexCount = (8 + 1) * (2 + 1);
       const heightLevels = 3; // heightSegments + 1
 
       for (let level = 0; level < heightLevels; level++) {
