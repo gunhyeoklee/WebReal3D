@@ -1,3 +1,12 @@
+import {
+  MipmapGenerator,
+  calculateMipLevelCount,
+  isRenderableFormat,
+} from "./MipmapGenerator";
+
+// Re-export mipmap utilities for convenience
+export { calculateMipLevelCount, isRenderableFormat };
+
 /**
  * Options for creating a texture.
  */
@@ -35,6 +44,20 @@ export interface TextureOptions {
    * Optional label for debugging.
    */
   label?: string;
+
+  /**
+   * Whether to generate mipmaps for the texture.
+   * Mipmaps improve texture quality at various distances by providing
+   * pre-filtered versions at different resolutions.
+   *
+   * Defaults to true for better visual quality.
+   * Set to false to reduce memory usage (~33% savings) when mipmaps aren't needed.
+   *
+   * **Note:** Mipmap generation requires the texture format to be renderable.
+   * If the format doesn't support rendering, a warning will be logged and
+   * mipmaps will be skipped.
+   */
+  generateMipmaps?: boolean;
 }
 
 /**
@@ -143,6 +166,7 @@ export class Texture {
   private _width: number;
   private _height: number;
   private _format: GPUTextureFormat;
+  private _mipLevelCount: number;
 
   /**
    * Creates a new Texture instance.
@@ -151,19 +175,22 @@ export class Texture {
    * @param width - Texture width in pixels
    * @param height - Texture height in pixels
    * @param format - The texture format
+   * @param mipLevelCount - The number of mip levels
    */
   constructor(
     gpuTexture: GPUTexture,
     gpuSampler: GPUSampler,
     width: number,
     height: number,
-    format: GPUTextureFormat = "rgba8unorm"
+    format: GPUTextureFormat = "rgba8unorm",
+    mipLevelCount: number = 1
   ) {
     this._gpuTexture = gpuTexture;
     this._gpuSampler = gpuSampler;
     this._width = width;
     this._height = height;
     this._format = format;
+    this._mipLevelCount = mipLevelCount;
   }
 
   /**
@@ -199,6 +226,21 @@ export class Texture {
    */
   get format(): GPUTextureFormat {
     return this._format;
+  }
+
+  /**
+   * Gets the number of mip levels in the texture.
+   * A value of 1 means no mipmaps (only the base level).
+   */
+  get mipLevelCount(): number {
+    return this._mipLevelCount;
+  }
+
+  /**
+   * Returns true if this texture has mipmaps (mipLevelCount > 1).
+   */
+  get hasMipmaps(): boolean {
+    return this._mipLevelCount > 1;
   }
 
   /**
@@ -361,23 +403,49 @@ export class Texture {
         );
       }
 
+      // Determine whether to generate mipmaps (default: true)
+      const shouldGenerateMipmaps = options.generateMipmaps !== false;
+
+      // Check if format supports mipmap generation (must be renderable)
+      let mipLevelCount = 1;
+      if (shouldGenerateMipmaps) {
+        if (isRenderableFormat(format)) {
+          mipLevelCount = calculateMipLevelCount(
+            imageBitmap.width,
+            imageBitmap.height
+          );
+        } else {
+          console.warn(
+            `[Texture] Format '${format}' does not support mipmap generation (not renderable). ` +
+              `Mipmaps will be skipped. Use a renderable format like 'rgba8unorm' for mipmap support.`
+          );
+        }
+      }
+
       // Create the GPU texture
       const texture = device.createTexture({
         label: options.label ?? `Texture: ${url}`,
         size: [imageBitmap.width, imageBitmap.height, 1],
         format,
+        mipLevelCount,
         usage:
           GPUTextureUsage.TEXTURE_BINDING |
           GPUTextureUsage.COPY_DST |
           GPUTextureUsage.RENDER_ATTACHMENT,
       });
 
-      // Upload the image data to the GPU
+      // Upload the image data to the GPU (base mip level)
       device.queue.copyExternalImageToTexture(
         { source: imageBitmap },
         { texture: texture },
         [imageBitmap.width, imageBitmap.height]
       );
+
+      // Generate mipmaps if requested and supported
+      if (mipLevelCount > 1) {
+        const mipmapGenerator = MipmapGenerator.get(device);
+        mipmapGenerator.generateMipmap(texture);
+      }
 
       // Merge sampler options with defaults and validate
       const mergedSamplerOptions: GPUSamplerDescriptor = {
@@ -397,7 +465,8 @@ export class Texture {
         sampler,
         imageBitmap.width,
         imageBitmap.height,
-        format
+        format,
+        mipLevelCount
       );
     } catch (error) {
       if (error instanceof Error) {

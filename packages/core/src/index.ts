@@ -52,4 +52,7 @@ export {
   type TextureOptions,
   SamplerPresets,
   DEFAULT_SAMPLER_OPTIONS,
+  calculateMipLevelCount,
+  isRenderableFormat,
 } from "./Texture";
+export { MipmapGenerator } from "./MipmapGenerator";
