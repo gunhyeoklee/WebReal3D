@@ -2,8 +2,6 @@ import type { Material, VertexBufferLayout, RenderContext } from "./Material";
 import { ShaderLib } from "../shaders";
 import { Texture } from "../Texture";
 import { PointLight } from "../light/PointLight";
-import { DirectionalLight } from "../light/DirectionalLight";
-import type { Light } from "../light/Light";
 
 export interface ParallaxMaterialOptions {
   /** Albedo/diffuse texture (color map) */
@@ -246,17 +244,7 @@ export class ParallaxMaterial implements Material {
     buffer.setFloat32(offset + 92, this.shininess, true); // offset 156 (materialParams.w)
 
     // Find light from scene if context provided
-    let light: Light | undefined;
-    if (context?.scene) {
-      context.scene.traverse((obj) => {
-        if (
-          (obj instanceof DirectionalLight || obj instanceof PointLight) &&
-          !light
-        ) {
-          light = obj;
-        }
-      });
-    }
+    const light = context?.scene?.findFirstLight();
 
     // Write light data at offset 160+
     if (light instanceof PointLight) {
