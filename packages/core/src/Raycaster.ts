@@ -1,6 +1,5 @@
 import { BarycentricCoordinates, Vector2, Vector3 } from "@web-real/math";
 import { Ray } from "./Ray";
-import { computeBoundingBox } from "./geometry/BoundingUtils";
 import type { Camera } from "./camera/Camera";
 import type { PerspectiveCamera } from "./camera/PerspectiveCamera";
 import type { Object3D } from "./Object3D";
@@ -128,8 +127,7 @@ class IntersectionCalculator {
     const localRay = this._transformRayToLocal(ray, worldMatrixInverse);
 
     // Early exit: test bounding box in local space
-    const boundingBox = computeBoundingBox(mesh.geometry);
-    if (localRay.intersectBox(boundingBox) === null) {
+    if (localRay.intersectBox(mesh.boundingBox) === null) {
       return [];
     }
 
