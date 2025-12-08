@@ -13,24 +13,28 @@ export interface Geometry {
 
 /**
  * Creates an appropriate index array based on the maximum vertex index.
- * Uses Uint16Array for meshes with <= 65535 vertices (more memory efficient),
+ * Uses Uint16Array if max index <= 65535 (more memory efficient),
  * and Uint32Array for larger meshes.
  *
  * @param indices - Array of vertex indices
  * @returns Uint16Array if max index <= 65535, otherwise Uint32Array
- *
- * @example
- * ```ts
- * const indices = createIndexArray([0, 1, 2, 3, 4, 5]);
- * // Returns Uint16Array for small meshes
- *
- * const largeIndices = createIndexArray(Array.from({ length: 100000 }, (_, i) => i));
- * // Returns Uint32Array for large meshes
- * ```
  */
 export function createIndexArray(indices: number[]): IndexArray {
-  const maxIndex = indices.length > 0 ? Math.max(...indices) : 0;
-  return maxIndex > 65535 ? new Uint32Array(indices) : new Uint16Array(indices);
+  if (indices.length === 0) {
+    return new Uint16Array(0);
+  }
+
+  let maxIndex = 0;
+  for (let i = 0; i < indices.length; i++) {
+    if (indices[i] > maxIndex) {
+      maxIndex = indices[i];
+    }
+  }
+
+  const MAX_UINT16 = 65535;
+  return maxIndex > MAX_UINT16
+    ? new Uint32Array(indices)
+    : new Uint16Array(indices);
 }
 
 /**
