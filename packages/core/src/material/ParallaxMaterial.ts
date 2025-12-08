@@ -243,8 +243,8 @@ export class ParallaxMaterial implements Material {
     buffer.setFloat32(offset + 88, this.normal ? 1 : 0, true); // offset 152 (materialParams.z)
     buffer.setFloat32(offset + 92, this.shininess, true); // offset 156 (materialParams.w)
 
-    // Find light from scene if context provided
-    const light = context?.scene?.findFirstLight();
+    // Get first light from context (pre-collected by Renderer)
+    const light = context?.lights?.[0];
 
     // Write light data at offset 160+
     if (light instanceof PointLight) {

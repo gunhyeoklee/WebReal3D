@@ -2,6 +2,7 @@ import type { Texture } from "../Texture";
 import type { Camera } from "../camera/Camera";
 import type { Scene } from "../Scene";
 import type { Mesh } from "../Mesh";
+import type { Light } from "../light/Light";
 
 export interface VertexBufferLayout {
   arrayStride: number;
@@ -19,6 +20,8 @@ export interface RenderContext {
   camera: Camera;
   scene: Scene;
   mesh: Mesh;
+  /** Lights collected from the scene (collected once per frame by Renderer) */
+  lights: Light[];
 }
 
 export interface Material {

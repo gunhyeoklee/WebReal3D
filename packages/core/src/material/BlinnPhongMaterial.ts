@@ -100,8 +100,8 @@ export class BlinnPhongMaterial implements Material {
     buffer.setFloat32(offset + 136, this.color.b, true); // offset 200
     buffer.setFloat32(offset + 140, this.shininess, true); // offset 204
 
-    // Find light from scene if context provided
-    const light = context?.scene?.findFirstLight();
+    // Get first light from context (pre-collected by Renderer)
+    const light = context?.lights?.[0];
 
     // Write light data: offset 208 (lightPosition), 224 (lightColor), 256 (lightParams), 272 (lightTypes)
     if (light) {

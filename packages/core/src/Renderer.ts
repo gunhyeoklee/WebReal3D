@@ -4,6 +4,7 @@ import type { Scene } from "./Scene";
 import type { Camera } from "./camera/Camera";
 import type { Material, RenderContext } from "./material/Material";
 import { Mesh } from "./Mesh";
+import { Light } from "./light/Light";
 
 interface MeshGPUResources {
   vertexBuffer: GPUBuffer;
@@ -287,10 +288,14 @@ export class Renderer {
     scene.updateMatrixWorld();
     camera.updateWorldMatrix(false, false);
 
+    // Collect meshes and lights in a single traversal
     const meshes: Mesh[] = [];
+    const lights: Light[] = [];
     scene.traverse((object) => {
       if (object instanceof Mesh && object.visible) {
         meshes.push(object);
+      } else if (object instanceof Light) {
+        lights.push(object);
       }
     });
 
@@ -346,6 +351,7 @@ export class Renderer {
           camera,
           scene,
           mesh,
+          lights,
         };
 
         // Use pre-allocated buffer from material if available, otherwise allocate temporarily
