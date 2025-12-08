@@ -171,6 +171,10 @@ export class Ray {
    * @returns Distance to the intersection point if the ray intersects the box, null otherwise
    */
   intersectBox(box: BoundingBox): number | null {
+    if (box.isEmpty()) {
+      return null;
+    }
+
     const { min, max } = box;
     const { origin, direction } = this;
 
@@ -278,6 +282,10 @@ export class Ray {
    * @returns Distance to the nearest intersection point if the ray intersects the sphere, null otherwise
    */
   intersectSphere(sphere: BoundingSphere): number | null {
+    if (sphere.isEmpty()) {
+      return null;
+    }
+
     const { center, radius } = sphere;
     const { origin, direction } = this;
 
