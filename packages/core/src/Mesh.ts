@@ -2,9 +2,12 @@ import type { Geometry } from "./geometry/Geometry";
 import type { Material } from "./material/Material";
 import { VertexColorMaterial } from "./material/VertexColorMaterial";
 import { Object3D } from "./Object3D";
+import { BoundingBox } from "@web-real/math";
+import { computeBoundingBox } from "./geometry/BoundingUtils";
 
 export class Mesh extends Object3D {
   private _geometry: Geometry;
+  private _boundingBox: BoundingBox | null = null;
   public material: Material;
   /** Set to true when geometry data changes and GPU buffers need to be updated */
   public needsUpdate: boolean = false;
@@ -21,7 +24,20 @@ export class Mesh extends Object3D {
 
   set geometry(value: Geometry) {
     this._geometry = value;
+    this._boundingBox = null; // Invalidate bounding box cache
     this.needsUpdate = true;
+  }
+
+  /**
+   * Gets the cached bounding box for this mesh's geometry.
+   * The bounding box is computed once and cached for performance.
+   * Cache is invalidated when geometry changes.
+   */
+  get boundingBox(): BoundingBox {
+    if (this._boundingBox === null) {
+      this._boundingBox = computeBoundingBox(this._geometry);
+    }
+    return this._boundingBox;
   }
 
   get indices(): Uint16Array {

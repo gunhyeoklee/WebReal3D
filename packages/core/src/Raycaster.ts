@@ -126,6 +126,11 @@ class IntersectionCalculator {
     const worldMatrixInverse = mesh.worldMatrix.inverse();
     const localRay = this._transformRayToLocal(ray, worldMatrixInverse);
 
+    // Early exit: test bounding box in local space
+    if (localRay.intersectBox(mesh.boundingBox) === null) {
+      return [];
+    }
+
     // Test all triangles
     const intersections: Intersection[] = [];
     const { positions, indices, uvs } = mesh.geometry;
