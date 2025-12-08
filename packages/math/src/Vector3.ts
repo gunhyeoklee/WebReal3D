@@ -79,6 +79,46 @@ export class Vector3 {
     return this;
   }
 
+  /**
+   * Calculates the Euclidean distance from this vector to another vector.
+   */
+  distanceTo(v: Vector3): number {
+    return Math.sqrt(this.distanceToSquared(v));
+  }
+
+  /**
+   * Calculates the squared Euclidean distance from this vector to another vector.
+   * Useful for distance comparisons without expensive sqrt operation.
+   */
+  distanceToSquared(v: Vector3): number {
+    const dx = this.x - v.x;
+    const dy = this.y - v.y;
+    const dz = this.z - v.z;
+    return dx * dx + dy * dy + dz * dz;
+  }
+
+  /**
+   * Returns a new vector with the minimum component values from two vectors.
+   */
+  static min(a: Vector3, b: Vector3): Vector3 {
+    return new Vector3(
+      Math.min(a.x, b.x),
+      Math.min(a.y, b.y),
+      Math.min(a.z, b.z)
+    );
+  }
+
+  /**
+   * Returns a new vector with the maximum component values from two vectors.
+   */
+  static max(a: Vector3, b: Vector3): Vector3 {
+    return new Vector3(
+      Math.max(a.x, b.x),
+      Math.max(a.y, b.y),
+      Math.max(a.z, b.z)
+    );
+  }
+
   toString(): string {
     return `Vector3(${this.x}, ${this.y}, ${this.z})`;
   }
