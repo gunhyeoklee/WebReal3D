@@ -8,9 +8,12 @@ struct Uniforms {
   cameraPosition: vec4f,
   lightParams: vec4f,         // x = range, y = attenuation param
   lightTypes: vec4f,          // x = light type (0=directional, 1=point), y = attenuation type (0=linear, 1=quadratic, 2=physical)
+  displacementParams: vec4f,  // x = scale, y = bias, zw = unused
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+@group(0) @binding(1) var displacementSampler: sampler;
+@group(0) @binding(2) var displacementMap: texture_2d<f32>;
 
 struct FragmentInput {
   @location(0) normal: vec3f,
@@ -24,11 +27,11 @@ fn calculateAttenuation(distance: f32, range: f32, attenuationType: f32, param: 
     // Linear: 1 - d/range
     return max(1.0 - normalizedDist, 0.0);
   } else if (attenuationType < 1.5) {
-    // Quadratic: (1 - d/range)²
+    // Quadratic: (1 - d/range)^2
     let linear = max(1.0 - normalizedDist, 0.0);
     return linear * linear;
   } else {
-    // Physical: 1 / (1 + (d/range)² * k)
+    // Physical: 1 / (1 + (d/range)^2 * k)
     return 1.0 / (1.0 + normalizedDist * normalizedDist * param);
   }
 }
@@ -59,7 +62,6 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     attenuation = calculateAttenuation(distance, range, attenuationType, param);
   }
   
-  // Ambient
   let ambient = 0.1;
   
   // Diffuse (Lambertian)
@@ -72,7 +74,6 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let shininess = uniforms.colorAndShininess.a;
   let specular = pow(NdotH, shininess) * uniforms.lightColor.rgb * uniforms.lightColor.a * attenuation;
   
-  // Final color
   let materialColor = uniforms.colorAndShininess.rgb;
   let finalColor = materialColor * (ambient + diffuse) + specular;
   

@@ -3,11 +3,19 @@ import type { Material, VertexBufferLayout, RenderContext } from "./Material";
 import { ShaderLib } from "../shaders";
 import { DirectionalLight } from "../light/DirectionalLight";
 import { PointLight } from "../light/PointLight";
+import type { Texture } from "../texture";
+import { DummyTextures } from "../texture";
 
 export interface BlinnPhongMaterialOptions {
   color?: [number, number, number] | Color;
   shininess?: number;
   wireframe?: boolean;
+  /** Optional displacement map texture */
+  displacementMap?: Texture;
+  /** Displacement scale multiplier (default: 1.0) */
+  displacementScale?: number;
+  /** Displacement bias offset (default: 0.0) */
+  displacementBias?: number;
 }
 
 export class BlinnPhongMaterial implements Material {
@@ -18,6 +26,12 @@ export class BlinnPhongMaterial implements Material {
   shininess: number;
   /** Whether to render in wireframe mode */
   wireframe: boolean;
+  /** Optional displacement map texture */
+  readonly displacementMap?: Texture;
+  /** Displacement scale multiplier */
+  readonly displacementScale: number;
+  /** Displacement bias offset */
+  readonly displacementBias: number;
 
   constructor(options: BlinnPhongMaterialOptions = {}) {
     this.color = options.color
@@ -25,6 +39,9 @@ export class BlinnPhongMaterial implements Material {
       : new Color(1.0, 1.0, 1.0);
     this.shininess = options.shininess ?? 32.0;
     this.wireframe = options.wireframe ?? false;
+    this.displacementMap = options.displacementMap;
+    this.displacementScale = options.displacementScale ?? 1.0;
+    this.displacementBias = options.displacementBias ?? 0.0;
   }
 
   getVertexShader(): string {
@@ -37,8 +54,8 @@ export class BlinnPhongMaterial implements Material {
 
   getVertexBufferLayout(): VertexBufferLayout {
     return {
-      // position(vec3f) + normal(vec3f) = 6 floats × 4 bytes = 24 bytes
-      arrayStride: 24,
+      // position(vec3f) + normal(vec3f) + uv(vec2f) = 8 floats × 4 bytes = 32 bytes
+      arrayStride: 32,
       attributes: [
         {
           shaderLocation: 0,
@@ -50,13 +67,35 @@ export class BlinnPhongMaterial implements Material {
           offset: 12,
           format: "float32x3", // normal
         },
+        {
+          shaderLocation: 2,
+          offset: 24,
+          format: "float32x2", // uv
+        },
       ],
     };
   }
 
-  // Layout: mat4x4f mvp (64B) + mat4x4f model (64B) + mat4x4f normalMatrix (64B) + vec4f colorAndShininess (16B) + vec4f lightPosition (16B) + vec4f lightColor (16B) + vec4f cameraPosition (16B) + vec4f lightParams (16B) + vec4f lightTypes (16B) = 288 bytes
+  // Layout: mat4x4f mvp (64B) + mat4x4f model (64B) + mat4x4f normalMatrix (64B) + vec4f colorAndShininess (16B) + vec4f lightPosition (16B) + vec4f lightColor (16B) + vec4f cameraPosition (16B) + vec4f lightParams (16B) + vec4f lightTypes (16B) + vec4f displacementParams (16B) = 304 bytes
   getUniformBufferSize(): number {
-    return 288;
+    return 304;
+  }
+
+  /**
+   * Gets textures for binding. Returns displacement map or dummy black texture.
+   * @param device - WebGPU device for creating dummy texture if needed
+   * @returns Array with displacement texture
+   */
+  getTextures(device?: GPUDevice): Texture[] {
+    if (this.displacementMap) {
+      return [this.displacementMap];
+    }
+    if (!device) {
+      throw new Error(
+        "BlinnPhongMaterial.getTextures() requires a GPUDevice parameter when no displacement map is provided"
+      );
+    }
+    return [DummyTextures.getBlack(device)];
   }
 
   getPrimitiveTopology(): GPUPrimitiveTopology {
@@ -181,5 +220,11 @@ export class BlinnPhongMaterial implements Material {
       buffer.setFloat32(offset + 184, cameraWorldMatrix[14], true); // offset 248
       buffer.setFloat32(offset + 188, 0, true); // offset 252 (w unused)
     }
+
+    // Write displacement params at offset 288 (vec4f: x=scale, y=bias, zw=unused)
+    buffer.setFloat32(offset + 224, this.displacementScale, true); // offset 288
+    buffer.setFloat32(offset + 228, this.displacementBias, true); // offset 292
+    buffer.setFloat32(offset + 232, 0, true); // offset 296 (unused)
+    buffer.setFloat32(offset + 236, 0, true); // offset 300 (unused)
   }
 }
