@@ -11,17 +11,37 @@ const DEFAULT_FACE_COLORS: Color[] = [
   Color.fromHex("#4dffff"), // Left - Cyan
 ];
 
+/**
+ * Options for creating a VertexColorMaterial.
+ */
 export interface VertexColorMaterialOptions {
   colors?: Float32Array;
   faceColors?: Color[];
   verticesPerFace?: number;
 }
 
+/**
+ * A material that renders geometry with per-vertex colors.
+ *
+ * @example
+ * ```ts
+ * // Using default colors
+ * const material = new VertexColorMaterial();
+ *
+ * // Using custom face colors
+ * const faceColors = [Color.red(), Color.green(), Color.blue()];
+ * const material = new VertexColorMaterial({ faceColors, verticesPerFace: 4 });
+ * ```
+ */
 export class VertexColorMaterial implements Material {
   readonly type = "vertexColor";
 
   private _colors: Float32Array;
 
+  /**
+   * Creates a new VertexColorMaterial instance.
+   * @param options - Configuration options for colors (default: uses DEFAULT_FACE_COLORS)
+   */
   constructor(options: VertexColorMaterialOptions = {}) {
     if (options.colors) {
       this._colors = options.colors;
@@ -32,6 +52,12 @@ export class VertexColorMaterial implements Material {
     }
   }
 
+  /**
+   * Expands face colors to per-vertex colors by repeating each color.
+   * @param faceColors - Array of colors, one per face
+   * @param verticesPerFace - Number of vertices per face
+   * @returns Float32Array of RGB values for all vertices
+   */
   private expandFaceColors(
     faceColors: Color[],
     verticesPerFace: number
@@ -66,14 +92,26 @@ export class VertexColorMaterial implements Material {
     this._colors = colors;
   }
 
+  /**
+   * Returns the WGSL vertex shader code for vertex color rendering.
+   * @returns The vertex shader source code
+   */
   getVertexShader(): string {
     return ShaderLib.get(this.type).vertex;
   }
 
+  /**
+   * Returns the WGSL fragment shader code for vertex color rendering.
+   * @returns The fragment shader source code
+   */
   getFragmentShader(): string {
     return ShaderLib.get(this.type).fragment;
   }
 
+  /**
+   * Returns the vertex buffer layout for position and color attributes.
+   * @returns The vertex buffer layout with 24-byte stride
+   */
   getVertexBufferLayout(): VertexBufferLayout {
     return {
       // position(vec3f) + color(vec3f) = 6 floats × 4 bytes = 24 bytes
@@ -93,11 +131,18 @@ export class VertexColorMaterial implements Material {
     };
   }
 
-  // Only needs MVP matrix (64 bytes).
+  /**
+   * Returns the uniform buffer size for MVP matrix.
+   * @returns The buffer size in bytes (64 bytes for mat4x4f)
+   */
   getUniformBufferSize(): number {
     return 64;
   }
 
+  /**
+   * Returns the primitive topology for rendering.
+   * @returns The topology type (triangle-list)
+   */
   getPrimitiveTopology(): GPUPrimitiveTopology {
     return "triangle-list";
   }

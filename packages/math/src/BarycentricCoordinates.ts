@@ -2,31 +2,26 @@ import { Vector2 } from "./Vector2";
 import { Vector3 } from "./Vector3";
 
 /**
- * Utility class for calculating barycentric coordinates and performing interpolation.
- * Barycentric coordinates are a coordinate system used to express any point inside a triangle
- * as a weighted combination of the triangle's vertices.
+ * Utility class for calculating barycentric coordinates and performing interpolation within triangles.
  *
- * Used for:
- * - UV coordinate interpolation
- * - Normal interpolation
- * - Texture sampling
- * - Physics collision response
- * - Mesh skinning and animation
+ * @example
+ * ```ts
+ * const v0 = new Vector3(0, 0, 0);
+ * const v1 = new Vector3(1, 0, 0);
+ * const v2 = new Vector3(0, 1, 0);
+ * const point = new Vector3(0.3, 0.3, 0);
+ * const coords = BarycentricCoordinates.calculate(point, v0, v1, v2);
+ * // coords = { u: 0.4, v: 0.3, w: 0.3 }
+ * ```
  */
 export class BarycentricCoordinates {
   /**
-   * Calculates barycentric coordinates for a point within a triangle.
-   *
-   * Given a triangle defined by vertices v0, v1, v2 and a point inside the triangle,
-   * calculates the barycentric coordinates (u, v, w) where:
-   * - point = u * v0 + v * v1 + w * v2
-   * - u + v + w = 1
-   *
+   * Calculates barycentric coordinates (u, v, w) for a point within a triangle.
    * @param point - The point to calculate coordinates for
    * @param v0 - First vertex of the triangle
    * @param v1 - Second vertex of the triangle
    * @param v2 - Third vertex of the triangle
-   * @returns Object with u, v, w coordinates or null if calculation fails
+   * @returns Object with u, v, w coordinates where u + v + w = 1, or null if degenerate triangle
    */
   static calculate(
     point: Vector3,

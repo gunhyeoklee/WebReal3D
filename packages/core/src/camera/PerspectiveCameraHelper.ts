@@ -19,29 +19,13 @@ export interface PerspectiveCameraHelperOptions {
 }
 
 /**
- * A helper class that visualizes a PerspectiveCamera's view frustum.
- * Useful for debugging camera setup and understanding the visible area.
- *
- * Different colors are used for different parts of the frustum:
- * - Near plane edges (default: yellow)
- * - Far plane edges (default: orange)
- * - Side edges connecting near to far (default: gray)
- * - Cone lines from camera position to near plane (default: dark gray)
+ * Visualizes a PerspectiveCamera's view frustum for debugging.
  *
  * @example
- * ```typescript
- * const debugCamera = new PerspectiveCamera(60, 1.5, 0.1, 100);
- * const helper = new PerspectiveCameraHelper(debugCamera, {
- *   nearColor: Color.GREEN,
- *   farColor: Color.RED,
- *   sideColor: Color.BLUE,
- *   coneColor: Color.WHITE,
- * });
+ * ```ts
+ * const camera = new PerspectiveCamera(60, 1.5, 0.1, 100);
+ * const helper = new PerspectiveCameraHelper(camera);
  * scene.add(helper);
- *
- * // Update when camera parameters change
- * debugCamera.fov = 90;
- * helper.update();
  * ```
  */
 export class PerspectiveCameraHelper extends Mesh {
@@ -49,6 +33,11 @@ export class PerspectiveCameraHelper extends Mesh {
   private readonly frustumGeometry: FrustumGeometry;
   private readonly lineColorMaterial: LineColorMaterial;
 
+  /**
+   * Creates a new PerspectiveCameraHelper instance.
+   * @param camera - The PerspectiveCamera to visualize
+   * @param options - Optional colors for different frustum parts
+   */
   constructor(
     camera: PerspectiveCamera,
     options: PerspectiveCameraHelperOptions = {}

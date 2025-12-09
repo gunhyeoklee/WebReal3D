@@ -1,14 +1,13 @@
 import type { Material, VertexBufferLayout } from "./Material";
 
 /**
- * Options for creating a ShaderMaterial.
+ * Configuration options for creating a ShaderMaterial.
  *
- * IMPORTANT: Custom shaders must follow these conventions:
+ * Custom shaders must follow these conventions:
  * - Vertex shader entry point: `@vertex fn main(...)`
  * - Fragment shader entry point: `@fragment fn main(...)`
  * - Uniform buffer binding: `@group(0) @binding(0) var<uniform> uniforms: Uniforms;`
- * - The first field in the Uniforms struct MUST be `mvpMatrix: mat4x4f` (64 bytes at offset 0)
- *   as the Renderer automatically writes the MVP matrix to this location.
+ * - First field in Uniforms struct: `mvpMatrix: mat4x4f` (64 bytes at offset 0)
  */
 export interface ShaderMaterialOptions {
   vertexShader: string;
@@ -26,9 +25,10 @@ export interface ShaderMaterialOptions {
 }
 
 /**
- * Generates a simple hash from shader code for type identification.
- * This ensures that materials with identical shaders share the same type,
- * enabling pipeline caching while being safe across HMR.
+ * Generates a hash from shader code for material type identification.
+ * @param vertex - The vertex shader source code
+ * @param fragment - The fragment shader source code
+ * @returns A hash string used as material type identifier
  */
 function hashShaderCode(vertex: string, fragment: string): string {
   const combined = vertex + fragment;
@@ -42,50 +42,17 @@ function hashShaderCode(vertex: string, fragment: string): string {
 }
 
 /**
- * Material that allows custom WGSL shaders to be provided directly.
- *
- * The Renderer automatically handles:
- * - MVP matrix writing at offset 0 (64 bytes)
- * - Pipeline caching based on shader code hash (materials with identical shaders share pipelines)
- *
- * User responsibilities:
- * - Provide valid WGSL shaders with correct entry points
- * - Ensure Uniforms struct starts with `mvpMatrix: mat4x4f`
- * - Implement `writeUniformData` callback for additional uniform data (optional)
+ * Material that uses custom WGSL shaders for rendering.
  *
  * @example
- * ```typescript
+ * ```ts
  * const material = new ShaderMaterial({
- *   vertexShader: `
- *     struct Uniforms {
- *       mvpMatrix: mat4x4f,
- *       color: vec4f,
- *     }
- *     @group(0) @binding(0) var<uniform> uniforms: Uniforms;
- *
- *     @vertex
- *     fn main(@location(0) position: vec3f) -> @builtin(position) vec4f {
- *       return uniforms.mvpMatrix * vec4f(position, 1.0);
- *     }
- *   `,
- *   fragmentShader: `
- *     struct Uniforms {
- *       mvpMatrix: mat4x4f,
- *       color: vec4f,
- *     }
- *     @group(0) @binding(0) var<uniform> uniforms: Uniforms;
- *
- *     @fragment
- *     fn main() -> @location(0) vec4f {
- *       return uniforms.color;
- *     }
- *   `,
+ *   vertexShader: `WGSL vertex shader`,
+ *   fragmentShader: `WGSL fragment shader`,
  *   uniformBufferSize: 80, // MVP (64) + color (16)
  *   writeUniformData: (buffer, offset = 64) => {
- *     buffer.setFloat32(offset, 1.0, true);      // r
- *     buffer.setFloat32(offset + 4, 0.0, true);  // g
- *     buffer.setFloat32(offset + 8, 0.0, true);  // b
- *     buffer.setFloat32(offset + 12, 1.0, true); // a
+ *     buffer.setFloat32(offset, 1.0, true);     // red
+ *     buffer.setFloat32(offset + 4, 0.0, true); // green
  *   }
  * });
  * ```
@@ -104,6 +71,10 @@ export class ShaderMaterial implements Material {
   ) => void;
   private _uniformDataBuffer: ArrayBuffer;
 
+  /**
+   * Creates a new ShaderMaterial instance.
+   * @param options - Configuration options for the material
+   */
   constructor(options: ShaderMaterialOptions) {
     // Generate type based on shader code hash for consistent pipeline caching
     // Same shader code = same type = shared pipeline (even across HMR)
@@ -144,22 +115,42 @@ export class ShaderMaterial implements Material {
     this._uniformDataBuffer = new ArrayBuffer(this._uniformBufferSize);
   }
 
+  /**
+   * Gets the vertex shader source code.
+   * @returns The WGSL vertex shader string
+   */
   getVertexShader(): string {
     return this._vertexShader;
   }
 
+  /**
+   * Gets the fragment shader source code.
+   * @returns The WGSL fragment shader string
+   */
   getFragmentShader(): string {
     return this._fragmentShader;
   }
 
+  /**
+   * Gets the vertex buffer layout configuration.
+   * @returns The vertex buffer layout describing attribute locations and formats
+   */
   getVertexBufferLayout(): VertexBufferLayout {
     return this._vertexBufferLayout;
   }
 
+  /**
+   * Gets the size of the uniform buffer in bytes.
+   * @returns The uniform buffer size (minimum 64 bytes for MVP matrix)
+   */
   getUniformBufferSize(): number {
     return this._uniformBufferSize;
   }
 
+  /**
+   * Gets the primitive topology for rendering.
+   * @returns The GPU primitive topology type
+   */
   getPrimitiveTopology(): GPUPrimitiveTopology {
     return this._primitiveTopology;
   }

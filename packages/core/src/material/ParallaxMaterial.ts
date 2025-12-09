@@ -20,6 +20,17 @@ export interface ParallaxMaterialOptions {
 /**
  * Parallax occlusion mapping material for 2.5D depth effects.
  * Requires geometry with UV, normals, tangents, and bitangents.
+ *
+ * @example
+ * ```ts
+ * const material = new ParallaxMaterial({
+ *   albedo: albedoTexture,
+ *   depth: depthTexture,
+ *   normal: normalTexture,
+ *   depthScale: 0.05,
+ *   shininess: 32.0
+ * });
+ * ```
  */
 export class ParallaxMaterial implements Material {
   readonly type = "parallax";
@@ -32,6 +43,10 @@ export class ParallaxMaterial implements Material {
   readonly generateNormalFromDepth: boolean;
   private static _dummyNormalTexture?: Texture;
 
+  /**
+   * Creates a new ParallaxMaterial instance.
+   * @param options - Configuration options for the material
+   */
   constructor(options: ParallaxMaterialOptions) {
     this.albedo = options.albedo;
     this.depth = options.depth;
@@ -63,17 +78,26 @@ export class ParallaxMaterial implements Material {
     }
   }
 
-  /** @returns Vertex shader code */
+  /**
+   * Gets the vertex shader code for parallax mapping.
+   * @returns WGSL vertex shader code
+   */
   getVertexShader(): string {
     return ShaderLib.get(this.type).vertex;
   }
 
-  /** @returns Fragment shader code */
+  /**
+   * Gets the fragment shader code for parallax mapping.
+   * @returns WGSL fragment shader code
+   */
   getFragmentShader(): string {
     return ShaderLib.get(this.type).fragment;
   }
 
-  /** @returns Vertex buffer layout for position, normal, uv, tangent, bitangent */
+  /**
+   * Gets the vertex buffer layout for position, normal, uv, tangent, bitangent.
+   * @returns Vertex buffer layout with 56-byte stride
+   */
   getVertexBufferLayout(): VertexBufferLayout {
     return {
       // position(vec3f) + normal(vec3f) + uv(vec2f) + tangent(vec3f) + bitangent(vec3f) = 14 floats × 4 bytes = 56 bytes
@@ -108,20 +132,26 @@ export class ParallaxMaterial implements Material {
     };
   }
 
-  /** @returns 192 bytes */
+  /**
+   * Gets the uniform buffer size for MVP, model matrix, camera, material params, and light data.
+   * @returns 192 bytes
+   */
   getUniformBufferSize(): number {
     return 192;
   }
 
-  /** @returns "triangle-list" */
+  /**
+   * Gets the primitive topology for rendering triangles.
+   * @returns "triangle-list"
+   */
   getPrimitiveTopology(): GPUPrimitiveTopology {
     return "triangle-list";
   }
 
   /**
-   * Creates 1x1 default normal texture (up-facing)
-   * @param device - WebGPU device
-   * @returns Dummy normal texture
+   * Creates a 1x1 default normal texture with up-facing normal.
+   * @param device - WebGPU device for texture creation
+   * @returns Dummy normal texture with (0, 0, 1) normal vector
    */
   private static createDummyNormalTexture(device: GPUDevice): Texture {
     if (!this._dummyNormalTexture) {
@@ -161,9 +191,9 @@ export class ParallaxMaterial implements Material {
   }
 
   /**
-   * Gets all textures for binding
+   * Gets all textures for binding to the shader.
    * @param device - WebGPU device (required if no normal texture provided)
-   * @returns [albedo, depth, normal] - Uses dummy normal if not provided
+   * @returns Array of [albedo, depth, normal] textures
    */
   getTextures(device?: GPUDevice): Texture[] {
     const normalTexture =
@@ -180,10 +210,10 @@ export class ParallaxMaterial implements Material {
   }
 
   /**
-   * Writes camera, material params, and light data to uniform buffer
+   * Writes camera position, material parameters, and light data to the uniform buffer.
    * @param buffer - DataView of the uniform buffer
-   * @param offset - Byte offset to start writing (default: 64)
-   * @param context - Rendering context with camera, scene, and mesh info
+   * @param offset - Byte offset to start writing (default: 64 after MVP matrix)
+   * @param context - Rendering context with camera, scene, and mesh information
    */
   writeUniformData(
     buffer: DataView,

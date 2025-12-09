@@ -8,60 +8,27 @@ import {
 export { calculateMipLevelCount, isRenderableFormat };
 
 /**
- * Options for creating a texture.
+ * Configuration options for texture creation.
  */
 export interface TextureOptions {
-  /**
-   * The texture format. Defaults to 'rgba8unorm'.
-   *
-   * **Note:** When using `fromURL()`, only formats compatible with
-   * `copyExternalImageToTexture` are supported:
-   * - 'rgba8unorm' - Standard color texture
-   * - 'rgba8unorm-srgb' - Color texture with automatic gamma correction
-   * - 'bgra8unorm' - Alternative byte order (platform-dependent)
-   * - 'bgra8unorm-srgb' - Alternative byte order with gamma correction
-   *
-   * For other formats (HDR, normal maps, etc.), create a texture manually using the
-   * `Texture` constructor and upload data via compute shader or staging buffer.
-   */
+  /** Texture format (default: 'rgba8unorm'). Only 'rgba8unorm', 'rgba8unorm-srgb', 'bgra8unorm', 'bgra8unorm-srgb' supported with fromURL() */
   format?: GPUTextureFormat;
 
-  /**
-   * If true, automatically converts format to sRGB variant for gamma correction.
-   * Applies to:
-   * - 'rgba8unorm' -> 'rgba8unorm-srgb'
-   * - 'bgra8unorm' -> 'bgra8unorm-srgb'
-   * Defaults to false.
-   */
+  /** Automatically convert format to sRGB variant for gamma correction (default: false) */
   srgb?: boolean;
 
-  /**
-   * Custom sampler options. Merged with default values.
-   */
+  /** Custom sampler options merged with default values */
   sampler?: Partial<GPUSamplerDescriptor>;
 
-  /**
-   * Optional label for debugging.
-   */
+  /** Optional label for debugging */
   label?: string;
 
-  /**
-   * Whether to generate mipmaps for the texture.
-   * Mipmaps improve texture quality at various distances by providing
-   * pre-filtered versions at different resolutions.
-   *
-   * Defaults to true for better visual quality.
-   * Set to false to reduce memory usage (~33% savings) when mipmaps aren't needed.
-   *
-   * **Note:** Mipmap generation requires the texture format to be renderable.
-   * If the format doesn't support rendering, a warning will be logged and
-   * mipmaps will be skipped.
-   */
+  /** Generate mipmaps for improved quality at various distances (default: true, saves ~33% memory if false) */
   generateMipmaps?: boolean;
 }
 
 /**
- * Default sampler configuration.
+ * Default sampler configuration with linear filtering and repeat addressing.
  */
 export const DEFAULT_SAMPLER_OPTIONS: GPUSamplerDescriptor = {
   magFilter: "linear",
@@ -72,64 +39,49 @@ export const DEFAULT_SAMPLER_OPTIONS: GPUSamplerDescriptor = {
 };
 
 /**
- * Predefined sampler presets for common use cases.
+ * Predefined sampler configurations for common rendering scenarios.
  *
  * @example
- * ```typescript
- * // Pixel art style (no interpolation)
+ * ```ts
+ * // Use pixel art preset
  * const texture = await Texture.fromURL(device, url, {
  *   sampler: SamplerPresets.PIXEL_ART,
  * });
  *
- * // Combine presets with spread operator
+ * // Combine multiple presets
  * const texture = await Texture.fromURL(device, url, {
  *   sampler: { ...SamplerPresets.SMOOTH, ...SamplerPresets.CLAMP_EDGE },
  * });
  * ```
  */
 export const SamplerPresets = {
-  /**
-   * Nearest-neighbor filtering for pixel art style.
-   * No interpolation between texels.
-   */
+  /** Nearest-neighbor filtering with no interpolation (ideal for pixel art) */
   PIXEL_ART: {
     magFilter: "nearest",
     minFilter: "nearest",
     mipmapFilter: "nearest",
   } as Partial<GPUSamplerDescriptor>,
 
-  /**
-   * Linear filtering for smooth textures.
-   * Interpolates between texels for smoother appearance.
-   */
+  /** Linear filtering with interpolation for smooth appearance */
   SMOOTH: {
     magFilter: "linear",
     minFilter: "linear",
     mipmapFilter: "linear",
   } as Partial<GPUSamplerDescriptor>,
 
-  /**
-   * Clamp to edge address mode.
-   * Prevents texture wrapping, useful for UI elements or single images.
-   */
+  /** Clamp to edge addressing (prevents wrapping, useful for UI elements) */
   CLAMP_EDGE: {
     addressModeU: "clamp-to-edge",
     addressModeV: "clamp-to-edge",
   } as Partial<GPUSamplerDescriptor>,
 
-  /**
-   * Mirror repeat address mode.
-   * Texture mirrors at boundaries for seamless tiling.
-   */
+  /** Mirror repeat addressing (mirrors at boundaries for seamless tiling) */
   MIRROR_REPEAT: {
     addressModeU: "mirror-repeat",
     addressModeV: "mirror-repeat",
   } as Partial<GPUSamplerDescriptor>,
 
-  /**
-   * Standard repeat address mode.
-   * Texture repeats at boundaries (default behavior).
-   */
+  /** Standard repeat addressing (default behavior) */
   REPEAT: {
     addressModeU: "repeat",
     addressModeV: "repeat",
@@ -137,7 +89,7 @@ export const SamplerPresets = {
 } as const;
 
 /**
- * Formats that require specific device features for filtering.
+ * Texture formats requiring specific GPU features for filtering support.
  */
 const FEATURE_REQUIRED_FORMATS: Record<string, GPUFeatureName> = {
   rgba32float: "float32-filterable",
@@ -146,8 +98,7 @@ const FEATURE_REQUIRED_FORMATS: Record<string, GPUFeatureName> = {
 };
 
 /**
- * Formats compatible with copyExternalImageToTexture.
- * Other formats require manual data upload.
+ * Texture formats supported by copyExternalImageToTexture (other formats require manual upload).
  */
 const COPY_EXTERNAL_IMAGE_FORMATS: Set<GPUTextureFormat> = new Set([
   "rgba8unorm",
@@ -157,8 +108,20 @@ const COPY_EXTERNAL_IMAGE_FORMATS: Set<GPUTextureFormat> = new Set([
 ]);
 
 /**
- * Represents a texture that can be used for rendering.
- * Wraps a GPUTexture and GPUSampler for WebGPU usage.
+ * WebGPU texture wrapper combining a GPUTexture and GPUSampler for rendering.
+ *
+ * @example
+ * ```ts
+ * // Load texture from URL
+ * const texture = await Texture.fromURL(device, 'assets/image.png');
+ *
+ * // Load with custom options
+ * const texture = await Texture.fromURL(device, 'assets/image.png', {
+ *   srgb: true,
+ *   generateMipmaps: true,
+ *   sampler: SamplerPresets.PIXEL_ART,
+ * });
+ * ```
  */
 export class Texture {
   private _gpuTexture: GPUTexture;
@@ -229,34 +192,29 @@ export class Texture {
   }
 
   /**
-   * Gets the number of mip levels in the texture.
-   * A value of 1 means no mipmaps (only the base level).
+   * Gets the number of mip levels (1 means no mipmaps, only base level).
    */
   get mipLevelCount(): number {
     return this._mipLevelCount;
   }
 
   /**
-   * Returns true if this texture has mipmaps (mipLevelCount > 1).
+   * Checks if the texture has mipmaps.
+   * @returns True if mipLevelCount > 1
    */
   get hasMipmaps(): boolean {
     return this._mipLevelCount > 1;
   }
 
   /**
-   * Updates the sampler with new options.
-   * Creates a new GPUSampler and replaces the existing one.
-   *
+   * Updates the texture sampler with new configuration.
    * @param device - The WebGPU device
-   * @param options - Sampler options to merge with defaults
+   * @param options - Sampler options merged with defaults
    *
    * @example
-   * ```typescript
-   * // Change to pixel art style filtering
+   * ```ts
    * texture.updateSampler(device, SamplerPresets.PIXEL_ART);
-   *
-   * // Change address mode to clamp
-   * texture.updateSampler(device, { addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge" });
+   * texture.updateSampler(device, { addressModeU: 'clamp-to-edge' });
    * ```
    */
   updateSampler(
@@ -275,11 +233,9 @@ export class Texture {
   }
 
   /**
-   * Validates sampler options and fixes invalid configurations.
-   * WebGPU requires all filters to be "linear" when maxAnisotropy > 1.
-   *
-   * @param options - The sampler options to validate
-   * @returns Validated and potentially corrected sampler options
+   * Validates and corrects sampler options for WebGPU compatibility.
+   * @param options - Sampler options to validate
+   * @returns Validated sampler options with corrections applied
    */
   private static validateSamplerOptions(
     options: GPUSamplerDescriptor
@@ -320,8 +276,10 @@ export class Texture {
   }
 
   /**
-   * Resolves the final texture format based on options.
-   * Handles sRGB conversion and feature validation with fallback.
+   * Determines final texture format with sRGB conversion and feature validation.
+   * @param device - The WebGPU device
+   * @param options - Texture options containing format preferences
+   * @returns Resolved texture format with fallback to 'rgba8unorm' if unsupported
    */
   private static resolveFormat(
     device: GPUDevice,
@@ -351,17 +309,12 @@ export class Texture {
   }
 
   /**
-   * Loads a texture from a URL.
-   *
-   * **Supported formats:** Only 8-bit unorm formats compatible with
-   * `copyExternalImageToTexture` are supported: `rgba8unorm`, `rgba8unorm-srgb`,
-   * `bgra8unorm`, `bgra8unorm-srgb`. For other formats, use `createEmpty()`.
-   *
+   * Loads a texture from an image URL with automatic mipmap generation.
    * @param device - The WebGPU device
-   * @param url - URL to the image file
+   * @param url - URL to the image file (supports standard web image formats)
    * @param options - Optional texture configuration
-   * @returns A promise that resolves to a Texture instance
-   * @throws {Error} If the network request fails, image format is invalid, format is unsupported, or GPU resources cannot be created
+   * @returns Promise resolving to a loaded Texture instance
+   * @throws Error if fetch fails, format is invalid, or GPU resources cannot be created
    */
   static async fromURL(
     device: GPUDevice,

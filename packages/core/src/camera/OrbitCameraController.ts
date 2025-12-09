@@ -2,6 +2,9 @@ import { Vector3 } from "@web-real/math";
 import { Camera } from "./Camera";
 import { OrthographicCamera } from "./OrthographicCamera";
 
+/**
+ * Configuration options for OrbitCameraController.
+ */
 export interface OrbitCameraControllerOptions {
   /** Target point for rotation */
   target?: Vector3;
@@ -31,6 +34,19 @@ export interface OrbitCameraControllerOptions {
   panSpeed?: number;
 }
 
+/**
+ * Controls camera orbit, pan, and zoom interactions around a target point using mouse input.
+ *
+ * @example
+ * ```ts
+ * const camera = new PerspectiveCamera(45, canvas.width / canvas.height);
+ * const controller = new OrbitCameraController(camera, canvas, {
+ *   target: new Vector3(0, 0, 0),
+ *   radius: 10
+ * });
+ * // Left-click to rotate, right-click to pan, scroll to zoom
+ * ```
+ */
 export class OrbitCameraController {
   private camera: Camera;
   private canvas: HTMLCanvasElement;
@@ -67,6 +83,12 @@ export class OrbitCameraController {
   private onWheelBound: (e: WheelEvent) => void;
   private onContextMenuBound: (e: Event) => void;
 
+  /**
+   * Creates a new OrbitCameraController instance.
+   * @param camera - The camera to control
+   * @param canvas - The canvas element to attach mouse event listeners to
+   * @param options - Configuration options for orbit behavior and constraints
+   */
   constructor(
     camera: Camera,
     canvas: HTMLCanvasElement,
@@ -126,36 +148,64 @@ export class OrbitCameraController {
     this.update();
   }
 
+  /**
+   * Gets the current target point that the camera orbits around.
+   * @returns A clone of the target position vector
+   */
   get target(): Vector3 {
     return this._target.clone();
   }
 
+  /**
+   * Gets the current distance from the camera to the target.
+   * @returns The radius in world units
+   */
   get radius(): number {
     return this._radius;
   }
 
+  /**
+   * Sets the distance from the camera to the target.
+   * @param value - The new radius, clamped to minRadius and maxRadius
+   */
   set radius(value: number) {
     this._radius = Math.max(this.minRadius, Math.min(this.maxRadius, value));
   }
 
+  /**
+   * Gets the horizontal rotation angle around the target.
+   * @returns The theta angle in radians
+   */
   get theta(): number {
     return this._theta;
   }
 
+  /**
+   * Sets the horizontal rotation angle around the target.
+   * @param value - The new theta angle in radians (not clamped)
+   */
   set theta(value: number) {
     this._theta = value;
   }
 
+  /**
+   * Gets the vertical rotation angle from the target.
+   * @returns The phi angle in radians
+   */
   get phi(): number {
     return this._phi;
   }
 
+  /**
+   * Sets the vertical rotation angle from the target.
+   * @param value - The new phi angle in radians, clamped to minPhi and maxPhi
+   */
   set phi(value: number) {
     this._phi = Math.max(this.minPhi, Math.min(this.maxPhi, value));
   }
 
   /**
-   * Update camera position by converting spherical coordinates to Cartesian coordinates
+   * Updates the camera position and orientation based on current spherical coordinates.
    */
   update(): void {
     // Spherical to Cartesian conversion
@@ -256,7 +306,7 @@ export class OrbitCameraController {
   }
 
   /**
-   * Clean up event listeners
+   * Removes all event listeners and cleans up resources.
    */
   dispose(): void {
     this.canvas.removeEventListener("mousedown", this.onMouseDownBound);

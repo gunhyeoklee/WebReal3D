@@ -19,8 +19,16 @@ interface MeshGPUResources {
 }
 
 /**
- * Handles WebGPU rendering for scenes.
- * Manages render pipelines, GPU buffers, and depth textures.
+ * Handles WebGPU rendering for scenes with MSAA support.
+ * Manages render pipelines, GPU buffers, depth textures, and material-based rendering.
+ *
+ * @example
+ * ```ts
+ * const engine = new Engine(canvas);
+ * const renderer = new Renderer(engine);
+ * renderer.setClearColor([0.2, 0.3, 0.4, 1.0]);
+ * renderer.render(scene, camera);
+ * ```
  */
 export class Renderer {
   private engine: Engine;
@@ -35,8 +43,8 @@ export class Renderer {
   private trackedMeshes: Set<Mesh> = new Set();
 
   /**
-   * Creates a new Renderer instance.
-   * @param engine - The Engine instance to use for rendering.
+   * Creates a new Renderer instance with 4x MSAA and depth buffering.
+   * @param engine - The Engine instance providing WebGPU device and canvas context
    */
   constructor(engine: Engine) {
     this.engine = engine;
@@ -91,9 +99,9 @@ export class Renderer {
   }
 
   /**
-   * Gets or creates a render pipeline for the given material.
-   * @param material - The material to create a pipeline for.
-   * @returns The cached or newly created render pipeline.
+   * Gets or creates a render pipeline for the given material with caching.
+   * @param material - The material defining shaders and rendering configuration
+   * @returns The cached or newly created render pipeline for this material type
    */
   private getOrCreatePipeline(material: Material): GPURenderPipeline {
     const topology = material.getPrimitiveTopology();
@@ -155,10 +163,10 @@ export class Renderer {
   }
 
   /**
-   * Gets or creates GPU buffers for the given mesh.
-   * @param mesh - The mesh to create buffers for.
-   * @param pipeline - The render pipeline to create bind groups with.
-   * @returns The cached or newly created GPU resources.
+   * Gets or creates GPU buffers and bind groups for the given mesh.
+   * @param mesh - The mesh requiring vertex, index, and uniform buffers
+   * @param pipeline - The render pipeline used to create compatible bind groups
+   * @returns The cached or newly created GPU resources for this mesh
    */
   private getOrCreateMeshBuffers(
     mesh: Mesh,
@@ -275,8 +283,8 @@ export class Renderer {
 
   /**
    * Sets the clear color for the render pass.
-   * @param color - Color instance or RGBA tuple [r, g, b] or [r, g, b, a].
-   * @returns This renderer for chaining.
+   * @param color - Color instance or RGB/RGBA tuple [r, g, b] or [r, g, b, a] (values 0-1)
+   * @returns This renderer instance for method chaining
    */
   setClearColor(
     color: Color | [number, number, number] | [number, number, number, number]
@@ -286,9 +294,9 @@ export class Renderer {
   }
 
   /**
-   * Renders a scene from the perspective of a camera.
-   * @param scene - The scene to render.
-   * @param camera - The camera to render from.
+   * Renders a scene from the perspective of a camera with lighting and materials.
+   * @param scene - The scene containing meshes and lights to render
+   * @param camera - The camera defining view and projection transforms
    */
   render(scene: Scene, camera: Camera): void {
     scene.updateMatrixWorld();
@@ -405,8 +413,8 @@ export class Renderer {
   }
 
   /**
-   * Cleans up GPU resources and disconnects observers.
-   * Call this method when the renderer is no longer needed to prevent memory leaks.
+   * Cleans up GPU resources and disconnects observers to prevent memory leaks.
+   * Destroys textures, buffers, and clears caches for all tracked meshes.
    */
   dispose(): void {
     this.resizeObserver.disconnect();

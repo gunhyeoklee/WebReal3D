@@ -10,8 +10,14 @@ export interface RayTriangleIntersection {
 }
 
 /**
- * Represents a ray in 3D space, defined by an origin point and a direction vector.
- * Used for raycasting operations such as mouse picking and collision detection.
+ * Represents a ray in 3D space with an origin point and direction vector.
+ *
+ * @example
+ * ```ts
+ * const ray = new Ray(new Vector3(0, 0, 0), new Vector3(0, 0, -1));
+ * const point = ray.at(5); // Point 5 units along the ray
+ * const intersection = ray.intersectTriangle(v0, v1, v2);
+ * ```
  */
 export class Ray {
   private static readonly DEFAULT_EPSILON = 1e-6;
@@ -25,21 +31,21 @@ export class Ray {
   }
 
   /**
-   * Gets a point along the ray at distance t from the origin.
-   * @param t - Distance along the ray
-   * @returns Point at origin + direction * t
+   * Calculates a point along the ray at the specified distance from the origin.
+   * @param t - Distance along the ray from the origin
+   * @returns A new Vector3 at position origin + direction * t
    */
   at(t: number): Vector3 {
     return this.origin.add(this.direction.scale(t));
   }
 
   /**
-   * Tests intersection between this ray and a triangle using the Möller–Trumbore algorithm.
+   * Tests intersection with a triangle using the Möller–Trumbore algorithm.
    * @param vertex0 - First vertex of the triangle
    * @param vertex1 - Second vertex of the triangle
    * @param vertex2 - Third vertex of the triangle
    * @param epsilon - Tolerance for intersection tests (default: 1e-6)
-   * @returns Intersection data if the ray intersects the triangle, null otherwise
+   * @returns Intersection data with distance, point, and face normal, or null if no intersection
    */
   intersectTriangle(
     vertex0: Vector3,
@@ -89,8 +95,8 @@ export class Ray {
   /**
    * Checks if the ray is parallel to the triangle plane.
    * @param determinant - Determinant from Möller–Trumbore algorithm
-   * @param epsilon - Tolerance value
-   * @returns True if ray is parallel to triangle
+   * @param epsilon - Tolerance value for parallel detection
+   * @returns True if the ray is parallel to the triangle plane
    */
   private _isParallelToTriangle(determinant: number, epsilon: number): boolean {
     return Math.abs(determinant) < epsilon;
@@ -153,9 +159,9 @@ export class Ray {
 
   /**
    * Sets the origin and direction of this ray.
-   * @param origin - New origin point
-   * @param direction - New direction vector
-   * @returns This ray for chaining
+   * @param origin - The new origin point
+   * @param direction - The new direction vector
+   * @returns This ray instance for method chaining
    */
   set(origin: Vector3, direction: Vector3): this {
     this.origin = origin;
@@ -164,11 +170,9 @@ export class Ray {
   }
 
   /**
-   * Tests intersection between this ray and an axis-aligned bounding box (AABB).
-   * Uses the slab method for efficient AABB-ray intersection.
-   *
-   * @param box - The bounding box to test
-   * @returns Distance to the intersection point if the ray intersects the box, null otherwise
+   * Tests intersection with an axis-aligned bounding box using the slab method.
+   * @param box - The bounding box to test against
+   * @returns Distance to the nearest intersection point, or null if no intersection
    */
   intersectBox(box: BoundingBox): number | null {
     if (box.isEmpty()) {
@@ -231,14 +235,14 @@ export class Ray {
   }
 
   /**
-   * Tests ray intersection against a single axis slab of the bounding box.
+   * Tests ray intersection against a single axis-aligned slab.
    * @param origin - Ray origin component for this axis
    * @param direction - Ray direction component for this axis
-   * @param min - Minimum bound for this axis
-   * @param max - Maximum bound for this axis
-   * @param tmin - Current minimum t value
-   * @param tmax - Current maximum t value
-   * @returns Updated [tmin, tmax] if intersection exists, null otherwise
+   * @param min - Minimum bound of the slab
+   * @param max - Maximum bound of the slab
+   * @param tmin - Current minimum intersection distance
+   * @param tmax - Current maximum intersection distance
+   * @returns Updated [tmin, tmax] tuple if intersection exists, or null otherwise
    */
   private _intersectAxisSlab(
     origin: number,
@@ -275,11 +279,9 @@ export class Ray {
   }
 
   /**
-   * Tests intersection between this ray and a bounding sphere.
-   * Uses geometric method with discriminant calculation.
-   *
-   * @param sphere - The bounding sphere to test
-   * @returns Distance to the nearest intersection point if the ray intersects the sphere, null otherwise
+   * Tests intersection with a bounding sphere using geometric discriminant calculation.
+   * @param sphere - The bounding sphere to test against
+   * @returns Distance to the nearest intersection point, or null if no intersection
    */
   intersectSphere(sphere: BoundingSphere): number | null {
     if (sphere.isEmpty()) {

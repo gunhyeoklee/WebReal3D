@@ -2,8 +2,15 @@ import { Vector3 } from "./Vector3";
 import { BoundingBox } from "./BoundingBox";
 
 /**
- * Bounding Sphere for 3D objects.
- * Used for efficient culling and intersection tests.
+ * Represents a bounding sphere for 3D objects.
+ *
+ * @example
+ * ```ts
+ * const positions = new Float32Array([0, 0, 0, 1, 1, 1, -1, -1, -1]);
+ * const sphere = BoundingSphere.fromPositions(positions);
+ * const point = new Vector3(0.5, 0.5, 0.5);
+ * console.log(sphere.containsPoint(point)); // true
+ * ```
  */
 export class BoundingSphere {
   /** Center point of the sphere */
@@ -22,12 +29,8 @@ export class BoundingSphere {
   }
 
   /**
-   * Creates a BoundingSphere from a Float32Array of positions.
-   * Uses AABB-based algorithm: creates a bounding box first, then computes
-   * the sphere from the box center and the farthest vertex.
-   * This is fast but may not produce the minimal bounding sphere.
-   *
-   * @param positions - Vertex positions with stride 3 (x, y, z)
+   * Creates a BoundingSphere from vertex positions.
+   * @param positions - Vertex positions as Float32Array with stride 3 (x, y, z)
    * @returns A BoundingSphere that contains all positions
    */
   static fromPositions(positions: Float32Array): BoundingSphere {
@@ -54,11 +57,8 @@ export class BoundingSphere {
 
   /**
    * Creates a BoundingSphere from a BoundingBox.
-   * The sphere is centered at the box center with radius equal to
-   * half the box diagonal length.
-   *
-   * @param box - The bounding box
-   * @returns A BoundingSphere that contains the box
+   * @param box - The bounding box to convert
+   * @returns A BoundingSphere centered at the box center
    */
   static fromBoundingBox(box: BoundingBox): BoundingSphere {
     const center = box.getCenter();
@@ -90,15 +90,15 @@ export class BoundingSphere {
 
   /**
    * Creates a copy of this bounding sphere.
+   * @returns A new BoundingSphere with the same center and radius
    */
   clone(): BoundingSphere {
     return new BoundingSphere(this.center.clone(), this.radius);
   }
 
   /**
-   * Checks if the sphere is empty (negative radius).
-   * Note: A radius of 0 represents a valid degenerate sphere (a single point)
-   * and is not considered empty.
+   * Checks if the sphere is empty (has negative radius).
+   * @returns True if the sphere has a negative radius
    */
   isEmpty(): boolean {
     return this.radius < 0;

@@ -2,8 +2,13 @@ import { Texture, DEFAULT_SAMPLER_OPTIONS } from "./Texture";
 
 /**
  * Utility class for creating and caching dummy textures.
- * Dummy textures are 1x1 pixel textures used as fallbacks when
- * optional texture slots are not provided.
+ *
+ * @example
+ * ```ts
+ * const blackTex = DummyTextures.getBlack(device);
+ * const normalTex = DummyTextures.getNormal(device);
+ * // Use as fallbacks when texture slots are not provided
+ * ```
  */
 export class DummyTextures {
   private static _blackTexture: Texture | null = null;
@@ -12,9 +17,8 @@ export class DummyTextures {
 
   /**
    * Gets a cached 1x1 black texture (RGBA: 0, 0, 0, 255).
-   * Useful as default for displacement maps where black = no displacement.
-   * @param device - WebGPU device
-   * @returns Cached black texture
+   * @param device - The WebGPU device
+   * @returns A cached black texture instance
    */
   static getBlack(device: GPUDevice): Texture {
     if (!this._blackTexture) {
@@ -29,9 +33,8 @@ export class DummyTextures {
 
   /**
    * Gets a cached 1x1 white texture (RGBA: 255, 255, 255, 255).
-   * Useful as default for albedo, AO maps where white = full value.
-   * @param device - WebGPU device
-   * @returns Cached white texture
+   * @param device - The WebGPU device
+   * @returns A cached white texture instance
    */
   static getWhite(device: GPUDevice): Texture {
     if (!this._whiteTexture) {
@@ -45,10 +48,9 @@ export class DummyTextures {
   }
 
   /**
-   * Gets a cached 1x1 default normal texture (RGBA: 128, 128, 255, 255).
-   * Represents an up-facing normal (0, 0, 1) in tangent space.
-   * @param device - WebGPU device
-   * @returns Cached normal texture
+   * Gets a cached 1x1 normal texture representing an up-facing normal (RGBA: 128, 128, 255, 255).
+   * @param device - The WebGPU device
+   * @returns A cached normal texture instance
    */
   static getNormal(device: GPUDevice): Texture {
     if (!this._normalTexture) {
@@ -63,10 +65,10 @@ export class DummyTextures {
 
   /**
    * Creates a 1x1 texture with the specified pixel data.
-   * @param device - WebGPU device
+   * @param device - The WebGPU device
    * @param data - RGBA pixel data (4 bytes)
    * @param label - Debug label for the texture
-   * @returns New Texture instance
+   * @returns A new Texture instance
    */
   private static create1x1Texture(
     device: GPUDevice,

@@ -12,6 +12,9 @@ import type { Mesh } from "../scene/Mesh";
 class CameraRayHelper {
   /**
    * Creates a ray from camera and normalized device coordinates.
+   * @param coords - Screen position in NDC (-1 to +1 for both x and y)
+   * @param camera - The camera to cast the ray from
+   * @returns A new Ray instance in world space
    */
   static createRayFromCamera(coords: Vector2, camera: Camera): Ray {
     // Update camera matrices
@@ -36,6 +39,14 @@ class CameraRayHelper {
     }
   }
 
+  /**
+   * Creates a ray for perspective camera projection.
+   * @param coords - Screen position in NDC
+   * @param camera - The perspective camera
+   * @param projectionMatrixInverse - Inverse projection matrix
+   * @param viewMatrixInverse - Inverse view matrix
+   * @returns A new Ray from camera position through screen coordinates
+   */
   private static _createPerspectiveRay(
     coords: Vector2,
     camera: Camera,
@@ -62,6 +73,13 @@ class CameraRayHelper {
     return new Ray(cameraPosition, direction);
   }
 
+  /**
+   * Creates a ray for orthographic camera projection.
+   * @param coords - Screen position in NDC
+   * @param projectionMatrixInverse - Inverse projection matrix
+   * @param viewMatrixInverse - Inverse view matrix
+   * @returns A new Ray parallel to camera direction through screen coordinates
+   */
   private static _createOrthographicRay(
     coords: Vector2,
     projectionMatrixInverse: any,
@@ -108,6 +126,11 @@ export interface Intersection {
 class IntersectionCalculator {
   /**
    * Calculates intersections between a ray and a mesh.
+   * @param ray - The ray to test for intersections
+   * @param mesh - The mesh to test against
+   * @param near - Minimum distance threshold for valid intersections
+   * @param far - Maximum distance threshold for valid intersections
+   * @returns Array of intersection points with the mesh
    */
   static calculateMeshIntersections(
     ray: Ray,
@@ -156,6 +179,12 @@ class IntersectionCalculator {
     return intersections;
   }
 
+  /**
+   * Transforms a ray from world space to local object space.
+   * @param ray - The ray in world space
+   * @param worldMatrixInverse - Inverse world transformation matrix
+   * @returns A new Ray in local object space
+   */
   private static _transformRayToLocal(ray: Ray, worldMatrixInverse: any): Ray {
     const localRayOrigin = worldMatrixInverse.transformPoint(ray.origin);
     const localRayDirection = worldMatrixInverse
@@ -165,6 +194,19 @@ class IntersectionCalculator {
     return new Ray(localRayOrigin, localRayDirection);
   }
 
+  /**
+   * Tests intersection between a ray and a single triangle.
+   * @param localRay - The ray in local object space
+   * @param worldRay - The ray in world space
+   * @param mesh - The mesh containing the triangle
+   * @param positions - Vertex position data
+   * @param indices - Triangle index data
+   * @param uvs - UV coordinate data (optional)
+   * @param startIndex - Starting index of the triangle in the index array
+   * @param near - Minimum distance threshold
+   * @param far - Maximum distance threshold
+   * @returns Intersection data if hit, null otherwise
+   */
   private static _intersectTriangle(
     localRay: Ray,
     worldRay: Ray,
@@ -243,12 +285,30 @@ class IntersectionCalculator {
 /**
  * Raycaster for performing ray intersection tests with 3D objects.
  * Commonly used for mouse picking and collision detection.
+ *
+ * @example
+ * ```ts
+ * const raycaster = new Raycaster();
+ * const mouse = new Vector2(0, 0); // Center of screen in NDC
+ * raycaster.setFromCamera(mouse, camera);
+ * const intersects = raycaster.intersectObjects(scene.children);
+ * if (intersects.length > 0) {
+ *   console.log('Hit:', intersects[0].object);
+ * }
+ * ```
  */
 export class Raycaster {
   public ray: Ray;
   public near: number;
   public far: number;
 
+  /**
+   * Creates a new Raycaster instance.
+   * @param origin - Starting point of the ray (default: origin)
+   * @param direction - Direction vector of the ray (default: forward)
+   * @param near - Minimum intersection distance (default: 0)
+   * @param far - Maximum intersection distance (default: Infinity)
+   */
   constructor(origin?: Vector3, direction?: Vector3, near = 0, far = Infinity) {
     this.ray = new Ray(origin, direction);
     this.near = near;
@@ -314,6 +374,8 @@ export class Raycaster {
 
   /**
    * Internal method to test intersection with a single object.
+   * @param object - The object to test
+   * @param intersections - Array to accumulate intersection results
    */
   private _intersectObject(
     object: Object3D,

@@ -5,7 +5,8 @@ import { Mesh } from "../scene/Mesh";
 import type { Geometry } from "../geometry/Geometry";
 
 /**
- * Geometry for PointLightHelper - a wireframe cube showing light position
+ * Geometry for PointLightHelper - a wireframe cube showing light position.
+ * Creates a small cube with 12 edges rendered as lines.
  */
 class PointLightHelperGeometry implements Geometry {
   positions: Float32Array;
@@ -16,6 +17,10 @@ class PointLightHelperGeometry implements Geometry {
 
   private readonly size: number = 0.2;
 
+  /**
+   * Creates a new PointLightHelperGeometry instance.
+   * Builds a wireframe cube with 24 vertices (12 edges × 2 vertices per line).
+   */
   constructor() {
     // Wireframe cube: 12 edges × 2 vertices per line = 24 vertices
     this.vertexCount = 24;
@@ -92,6 +97,10 @@ class PointLightHelperGeometry implements Geometry {
 export class PointLightHelper extends Mesh {
   private readonly light: PointLight;
 
+  /**
+   * Creates a new PointLightHelper instance.
+   * @param light - The PointLight to visualize
+   */
   constructor(light: PointLight) {
     const geometry = new PointLightHelperGeometry();
     const material = new LineMaterial({ color: new Color(1, 1, 0) }); // Yellow

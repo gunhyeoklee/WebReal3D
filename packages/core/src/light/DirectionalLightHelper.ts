@@ -12,7 +12,8 @@ export interface DirectionalLightHelperOptions {
 }
 
 /**
- * Geometry for DirectionalLightHelper - an arrow showing light direction
+ * Geometry for DirectionalLightHelper - an arrow showing light direction.
+ * Creates a 3-line arrow (main shaft and two arrowhead wings) pointing in the light's direction.
  */
 class DirectionalLightHelperGeometry implements Geometry {
   positions: Float32Array;
@@ -23,6 +24,11 @@ class DirectionalLightHelperGeometry implements Geometry {
 
   private size: number;
 
+  /**
+   * Creates a new DirectionalLightHelperGeometry instance.
+   * @param light - The DirectionalLight to visualize
+   * @param size - The length of the arrow
+   */
   constructor(light: DirectionalLight, size: number) {
     this.size = size;
 
@@ -35,6 +41,10 @@ class DirectionalLightHelperGeometry implements Geometry {
     this.updatePositions(light);
   }
 
+  /**
+   * Updates the arrow geometry based on the light's direction.
+   * @param light - The DirectionalLight to update from
+   */
   updatePositions(light: DirectionalLight): void {
     const dir = light.direction;
     const size = this.size;
@@ -113,6 +123,10 @@ class DirectionalLightHelperGeometry implements Geometry {
     this.positions[17] = wing2Z;
   }
 
+  /**
+   * Updates the geometry to reflect changes in the light's direction.
+   * @param light - The DirectionalLight to update from
+   */
   update(light: DirectionalLight): void {
     this.updatePositions(light);
   }
@@ -140,6 +154,11 @@ export class DirectionalLightHelper extends Mesh {
   private readonly light: DirectionalLight;
   private readonly helperGeometry: DirectionalLightHelperGeometry;
 
+  /**
+   * Creates a new DirectionalLightHelper instance.
+   * @param light - The DirectionalLight to visualize
+   * @param options - Configuration options for the helper
+   */
   constructor(
     light: DirectionalLight,
     options: DirectionalLightHelperOptions = {}
@@ -157,8 +176,7 @@ export class DirectionalLightHelper extends Mesh {
   }
 
   /**
-   * Updates the helper geometry when light direction or position changes.
-   * Syncs the helper's position with the light's position.
+   * Updates the helper to reflect changes in the light's direction or position.
    */
   update(): void {
     // Sync helper position with light position

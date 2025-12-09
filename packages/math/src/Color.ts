@@ -1,6 +1,12 @@
 /**
- * Immutable RGBA color class.
- * RGB values are required, alpha is optional (default: 1.0)
+ * Represents an immutable RGBA color with floating-point components (0.0 to 1.0).
+ *
+ * @example
+ * ```ts
+ * const red = new Color(1, 0, 0);
+ * const semiTransparent = new Color(1, 0, 0, 0.5);
+ * const fromHex = Color.fromHex('#ff0000');
+ * ```
  */
 export class Color {
   // Predefined color constants
@@ -18,6 +24,13 @@ export class Color {
   private readonly _b: number;
   private readonly _a: number;
 
+  /**
+   * Creates a new Color instance with RGBA components.
+   * @param r - The red component (default: 0)
+   * @param g - The green component (default: 0)
+   * @param b - The blue component (default: 0)
+   * @param a - The alpha component (default: 1)
+   */
   constructor(r = 0, g = 0, b = 0, a = 1) {
     this._r = r;
     this._g = g;
@@ -42,28 +55,32 @@ export class Color {
   }
 
   /**
-   * Converts to RGB tuple.
+   * Converts this color to an RGB array.
+   * @returns A 3-element array [r, g, b]
    */
   toArray(): [number, number, number] {
     return [this._r, this._g, this._b];
   }
 
   /**
-   * Converts to RGBA tuple.
+   * Converts this color to an RGBA array.
+   * @returns A 4-element array [r, g, b, a]
    */
   toArray4(): [number, number, number, number] {
     return [this._r, this._g, this._b, this._a];
   }
 
   /**
-   * Converts to RGBA Float32Array (for GPU buffers).
+   * Converts this color to a Float32Array suitable for WebGPU buffers.
+   * @returns A Float32Array containing [r, g, b, a]
    */
   toFloat32Array(): Float32Array {
     return new Float32Array([this._r, this._g, this._b, this._a]);
   }
 
   /**
-   * Converts to hex string (excludes alpha).
+   * Converts this color to a hex string in #RRGGBB format.
+   * @returns A hex color string (alpha channel excluded)
    */
   toHex(): string {
     const r = Math.round(this._r * 255)
@@ -79,14 +96,17 @@ export class Color {
   }
 
   /**
-   * Creates a copy of this color.
+   * Creates a deep copy of this color.
+   * @returns A new Color instance with identical RGBA values
    */
   clone(): Color {
     return new Color(this._r, this._g, this._b, this._a);
   }
 
   /**
-   * Checks equality with another Color.
+   * Checks if this color equals another color by comparing all RGBA components.
+   * @param other - The color to compare with
+   * @returns True if all components are equal, false otherwise
    */
   equals(other: Color): boolean {
     return (
@@ -98,7 +118,9 @@ export class Color {
   }
 
   /**
-   * Creates Color from RGB or RGBA array.
+   * Creates a Color from an RGB or RGBA array.
+   * @param arr - A 3-element [r, g, b] or 4-element [r, g, b, a] array
+   * @returns A new Color instance
    */
   static fromArray(
     arr: [number, number, number] | [number, number, number, number]
@@ -107,8 +129,9 @@ export class Color {
   }
 
   /**
-   * Creates Color from tuple or Color instance (for union type handling).
-   * Uses duck typing to check for Color-like objects to handle cross-bundle instanceof issues.
+   * Creates a Color from an array or Color instance using duck typing.
+   * @param value - An RGB/RGBA array or Color-like object
+   * @returns A new Color instance
    */
   static from(
     value: [number, number, number] | [number, number, number, number] | Color
@@ -129,7 +152,9 @@ export class Color {
   }
 
   /**
-   * Creates Color from hex string (#RGB or #RRGGBB supported).
+   * Creates a Color from a hex string (#RGB or #RRGGBB format).
+   * @param hex - A hex color string like '#ff0000' or '#f00'
+   * @returns A new Color instance with alpha set to 1.0
    */
   static fromHex(hex: string): Color {
     let h = hex.replace("#", "");
@@ -140,7 +165,7 @@ export class Color {
     }
 
     if (h.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(h)) {
-       throw new Error(`Invalid hex color format: ${hex}`);
+      throw new Error(`Invalid hex color format: ${hex}`);
     }
 
     const r = parseInt(h.slice(0, 2), 16) / 255;

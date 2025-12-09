@@ -1,9 +1,24 @@
+/**
+ * Configuration options for creating a WebGPU engine instance.
+ */
 export interface EngineOptions {
   canvas: HTMLCanvasElement;
   format?: GPUTextureFormat;
   powerPreference?: GPUPowerPreference;
 }
 
+/**
+ * Core WebGPU rendering engine that manages device initialization and the render loop.
+ *
+ * @example
+ * ```ts
+ * const canvas = document.querySelector('canvas')!;
+ * const engine = await Engine.create({ canvas });
+ * engine.run((deltaTime) => {
+ *   // Render frame
+ * });
+ * ```
+ */
 export class Engine {
   private _canvas: HTMLCanvasElement;
   private _device!: GPUDevice;
@@ -38,6 +53,12 @@ export class Engine {
     return this._running;
   }
 
+  /**
+   * Creates and initializes a new Engine instance with WebGPU support.
+   * @param options - Configuration options for the engine
+   * @returns A promise that resolves to the initialized Engine instance
+   * @throws {Error} If WebGPU is not supported or initialization fails
+   */
   static async create(options: EngineOptions): Promise<Engine> {
     const engine = new Engine(options.canvas);
     await engine._initialize(options);
@@ -46,14 +67,14 @@ export class Engine {
 
   private async _initialize(options: EngineOptions): Promise<void> {
     if (!navigator.gpu) {
-      throw new Error('WebGPU is not supported in this browser');
+      throw new Error("WebGPU is not supported in this browser");
     }
 
     const adapter = await navigator.gpu.requestAdapter({
-      powerPreference: options.powerPreference ?? 'high-performance',
+      powerPreference: options.powerPreference ?? "high-performance",
     });
     if (!adapter) {
-      throw new Error('Failed to get GPU adapter');
+      throw new Error("Failed to get GPU adapter");
     }
 
     this._device = await adapter.requestDevice();
@@ -62,9 +83,9 @@ export class Engine {
       this.stop();
     });
 
-    const context = this._canvas.getContext('webgpu');
+    const context = this._canvas.getContext("webgpu");
     if (!context) {
-      throw new Error('Failed to get WebGPU context');
+      throw new Error("Failed to get WebGPU context");
     }
 
     this._context = context;
@@ -73,19 +94,23 @@ export class Engine {
     this._context.configure({
       device: this._device,
       format: this._format,
-      alphaMode: 'premultiplied',
+      alphaMode: "premultiplied",
     });
   }
 
+  /**
+   * Starts the render loop and calls the provided callback for each frame.
+   * @param onFrame - Callback function that receives deltaTime in seconds
+   */
   run(onFrame: (deltaTime: number) => void): void {
-    if (this._running){
-       return;
+    if (this._running) {
+      return;
     }
     this._running = true;
     this._lastTime = performance.now();
 
     const loop = (currentTime: number) => {
-      if (!this._running){
+      if (!this._running) {
         return;
       }
 
@@ -100,6 +125,9 @@ export class Engine {
     this._animationFrameId = requestAnimationFrame(loop);
   }
 
+  /**
+   * Stops the render loop and cancels the animation frame.
+   */
   stop(): void {
     this._running = false;
 
@@ -109,6 +137,9 @@ export class Engine {
     }
   }
 
+  /**
+   * Stops the render loop and destroys the WebGPU device.
+   */
   dispose(): void {
     this.stop();
     this._device.destroy();

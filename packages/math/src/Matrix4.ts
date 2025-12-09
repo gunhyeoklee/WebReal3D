@@ -1,18 +1,27 @@
 import { Vector3 } from "./Vector3.js";
 
 /**
- * 4x4 Matrix Class
- * Column-major order (compatible with WebGPU/OpenGL)
+ * Represents a 4x4 matrix in column-major order (compatible with WebGPU/OpenGL).
  *
  * Memory Layout:
  * [m0  m4  m8   m12]   [col0.x  col1.x  col2.x  col3.x]
  * [m1  m5  m9   m13] = [col0.y  col1.y  col2.y  col3.y]
  * [m2  m6  m10  m14]   [col0.z  col1.z  col2.z  col3.z]
  * [m3  m7  m11  m15]   [col0.w  col1.w  col2.w  col3.w]
+ *
+ * @example
+ * ```ts
+ * const m = new Matrix4();
+ * m.translate(new Vector3(5, 0, 0)).rotateY(Math.PI / 4);
+ * const point = m.transformPoint(new Vector3(1, 0, 0));
+ * ```
  */
 export class Matrix4 {
   private _data: Float32Array;
 
+  /**
+   * Creates a new Matrix4 initialized to the identity matrix.
+   */
   constructor() {
     // Initialize to identity matrix.
     this._data = new Float32Array([
@@ -24,11 +33,20 @@ export class Matrix4 {
     return this._data;
   }
 
+  /**
+   * Resets this matrix to the identity matrix.
+   * @returns This matrix for method chaining
+   */
   identity(): this {
     this._data.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     return this;
   }
 
+  /**
+   * Multiplies this matrix by another matrix.
+   * @param other - The matrix to multiply with
+   * @returns A new Matrix4 representing the product
+   */
   multiply(other: Matrix4): Matrix4 {
     const result = new Matrix4();
     const a = this._data;
@@ -47,6 +65,11 @@ export class Matrix4 {
     return result;
   }
 
+  /**
+   * Applies a translation transformation to this matrix.
+   * @param v - The translation vector
+   * @returns This matrix for method chaining
+   */
   translate(v: Vector3): this {
     const t = Matrix4.translation(v);
     const result = this.multiply(t);
@@ -54,6 +77,11 @@ export class Matrix4 {
     return this;
   }
 
+  /**
+   * Applies a scaling transformation to this matrix.
+   * @param v - The scaling factors for x, y, z axes
+   * @returns This matrix for method chaining
+   */
   scale(v: Vector3): this {
     const s = Matrix4.scaling(v);
     const result = this.multiply(s);
@@ -61,6 +89,11 @@ export class Matrix4 {
     return this;
   }
 
+  /**
+   * Applies a rotation around the X-axis to this matrix.
+   * @param angle - The rotation angle in radians
+   * @returns This matrix for method chaining
+   */
   rotateX(angle: number): this {
     const r = Matrix4.rotationX(angle);
     const result = this.multiply(r);
@@ -68,6 +101,11 @@ export class Matrix4 {
     return this;
   }
 
+  /**
+   * Applies a rotation around the Y-axis to this matrix.
+   * @param angle - The rotation angle in radians
+   * @returns This matrix for method chaining
+   */
   rotateY(angle: number): this {
     const r = Matrix4.rotationY(angle);
     const result = this.multiply(r);
@@ -75,6 +113,11 @@ export class Matrix4 {
     return this;
   }
 
+  /**
+   * Applies a rotation around the Z-axis to this matrix.
+   * @param angle - The rotation angle in radians
+   * @returns This matrix for method chaining
+   */
   rotateZ(angle: number): this {
     const r = Matrix4.rotationZ(angle);
     const result = this.multiply(r);
@@ -82,6 +125,10 @@ export class Matrix4 {
     return this;
   }
 
+  /**
+   * Creates a copy of this matrix.
+   * @returns A new Matrix4 with the same values
+   */
   clone(): Matrix4 {
     const m = new Matrix4();
     m._data.set(this._data);
@@ -191,6 +238,11 @@ export class Matrix4 {
     return result;
   }
 
+  /**
+   * Creates a translation matrix.
+   * @param v - The translation vector
+   * @returns A new Matrix4 representing the translation
+   */
   static translation(v: Vector3): Matrix4 {
     const m = new Matrix4();
     m._data[12] = v.x;
@@ -199,6 +251,11 @@ export class Matrix4 {
     return m;
   }
 
+  /**
+   * Creates a scaling matrix.
+   * @param v - The scaling factors for x, y, z axes
+   * @returns A new Matrix4 representing the scaling
+   */
   static scaling(v: Vector3): Matrix4 {
     const m = new Matrix4();
     m._data[0] = v.x;
@@ -207,6 +264,11 @@ export class Matrix4 {
     return m;
   }
 
+  /**
+   * Creates a rotation matrix around the X-axis.
+   * @param angle - The rotation angle in radians
+   * @returns A new Matrix4 representing the rotation
+   */
   static rotationX(angle: number): Matrix4 {
     const m = new Matrix4();
     const c = Math.cos(angle);
@@ -218,6 +280,11 @@ export class Matrix4 {
     return m;
   }
 
+  /**
+   * Creates a rotation matrix around the Y-axis.
+   * @param angle - The rotation angle in radians
+   * @returns A new Matrix4 representing the rotation
+   */
   static rotationY(angle: number): Matrix4 {
     const m = new Matrix4();
     const c = Math.cos(angle);
@@ -229,6 +296,11 @@ export class Matrix4 {
     return m;
   }
 
+  /**
+   * Creates a rotation matrix around the Z-axis.
+   * @param angle - The rotation angle in radians
+   * @returns A new Matrix4 representing the rotation
+   */
   static rotationZ(angle: number): Matrix4 {
     const m = new Matrix4();
     const c = Math.cos(angle);
@@ -240,6 +312,14 @@ export class Matrix4 {
     return m;
   }
 
+  /**
+   * Creates a perspective projection matrix.
+   * @param fovY - The vertical field of view in radians
+   * @param aspect - The aspect ratio (width / height)
+   * @param near - The near clipping plane distance (must be positive)
+   * @param far - The far clipping plane distance (must be positive)
+   * @returns A new Matrix4 representing the perspective projection
+   */
   static perspective(
     fovY: number,
     aspect: number,
@@ -268,6 +348,16 @@ export class Matrix4 {
     return m;
   }
 
+  /**
+   * Creates an orthographic projection matrix for WebGPU depth range [0, 1].
+   * @param left - The left clipping plane coordinate
+   * @param right - The right clipping plane coordinate
+   * @param bottom - The bottom clipping plane coordinate
+   * @param top - The top clipping plane coordinate
+   * @param near - The near clipping plane distance
+   * @param far - The far clipping plane distance
+   * @returns A new Matrix4 representing the orthographic projection
+   */
   static orthographic(
     left: number,
     right: number,

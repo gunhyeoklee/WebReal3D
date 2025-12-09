@@ -9,6 +9,17 @@ import { Light } from "./Light";
  */
 export type AttenuationType = "linear" | "quadratic" | "physical";
 
+/**
+ * Represents a point light that emits light in all directions from a single point.
+ * Light intensity decreases with distance based on the chosen attenuation type.
+ *
+ * @example
+ * ```ts
+ * const bulb = new PointLight(new Color(1, 0.8, 0.5), 2.0, 15, 'quadratic');
+ * bulb.position.set(0, 3, 0);
+ * scene.add(bulb);
+ * ```
+ */
 export class PointLight extends Light {
   /** Maximum range of the light. Objects beyond this distance receive no light. */
   public range: number;
@@ -34,11 +45,8 @@ export class PointLight extends Light {
   }
 
   /**
-   * Returns attenuation factors based on the attenuation type.
-   * The returned tuple is used by the shader to determine attenuation based on the selected type.
-   * For 'linear' and 'quadratic', the shader uses custom falloff formulas; for 'physical', an inverse-square-like formula is used.
-   * See the shader implementation (e.g., BlinnPhongMaterial.ts) for details on how these values are used.
-   * @returns Tuple of [range, parameter, unused, attenuation type code] for use in the shader.
+   * Returns attenuation factors for shader-based falloff calculation.
+   * @returns Tuple of [range, parameter, unused, type code] where type code is 0 (linear), 1 (quadratic), or 2 (physical)
    */
   getAttenuationFactors(): [number, number, number, number] {
     // Encode attenuation type: 0 = linear, 1 = quadratic, 2 = physical

@@ -1,8 +1,14 @@
 import { Vector3 } from "./Vector3";
 
 /**
- * Axis-Aligned Bounding Box (AABB).
- * Represents a rectangular box aligned with the coordinate axes.
+ * Represents an Axis-Aligned Bounding Box (AABB) aligned with coordinate axes.
+ *
+ * @example
+ * ```ts
+ * const box = new BoundingBox(new Vector3(0, 0, 0), new Vector3(10, 10, 10));
+ * const center = box.getCenter(); // Vector3(5, 5, 5)
+ * const size = box.getSize(); // Vector3(10, 10, 10)
+ * ```
  */
 export class BoundingBox {
   /** Minimum corner of the box */
@@ -85,7 +91,8 @@ export class BoundingBox {
   }
 
   /**
-   * Returns the center point of the bounding box.
+   * Calculates the center point of the bounding box.
+   * @returns A new Vector3 at the center of the box
    */
   getCenter(): Vector3 {
     return new Vector3(
@@ -96,7 +103,8 @@ export class BoundingBox {
   }
 
   /**
-   * Returns the size (dimensions) of the bounding box.
+   * Calculates the size (dimensions) of the bounding box.
+   * @returns A new Vector3 representing width, height, and depth
    */
   getSize(): Vector3 {
     return new Vector3(
@@ -138,14 +146,16 @@ export class BoundingBox {
   }
 
   /**
-   * Creates a copy of this bounding box.
+   * Creates a deep copy of this bounding box.
+   * @returns A new BoundingBox with cloned min and max vectors
    */
   clone(): BoundingBox {
     return new BoundingBox(this.min.clone(), this.max.clone());
   }
 
   /**
-   * Checks if the box is empty (inverted min/max).
+   * Checks if the box is empty (has inverted min/max coordinates).
+   * @returns True if any max coordinate is less than its corresponding min
    */
   isEmpty(): boolean {
     return (

@@ -12,7 +12,15 @@ export interface OrthographicCameraOptions {
 }
 
 /**
- * Orthographic camera that supports zoom and viewport updates.
+ * Represents an orthographic camera with parallel projection and zoom support.
+ *
+ * @example
+ * ```ts
+ * const camera = new OrthographicCamera({ zoom: 2 });
+ * camera.setViewport(800, 600);
+ * camera.position.set(0, 0, 5);
+ * const matrix = camera.projectionMatrix; // Get projection matrix
+ * ```
  */
 export class OrthographicCamera extends Camera {
   public left: number;
@@ -25,6 +33,10 @@ export class OrthographicCamera extends Camera {
 
   private _resizeObserver: ResizeObserver | null = null;
 
+  /**
+   * Creates a new OrthographicCamera instance.
+   * @param options - Camera configuration options (default: centered unit viewport)
+   */
   constructor(options: OrthographicCameraOptions = {}) {
     super();
     this.left = options.left ?? -1;
@@ -36,6 +48,10 @@ export class OrthographicCamera extends Camera {
     this.zoom = options.zoom ?? 1;
   }
 
+  /**
+   * Calculates the orthographic projection matrix with zoom applied.
+   * @returns The projection matrix for this camera
+   */
   get projectionMatrix(): Matrix4 {
     const scale = 1 / this.zoom;
 
@@ -54,6 +70,9 @@ export class OrthographicCamera extends Camera {
 
   /**
    * Centers the view box using the provided dimensions.
+   * @param width - The viewport width in pixels
+   * @param height - The viewport height in pixels
+   * @returns This camera instance for method chaining
    */
   setViewport(width: number, height: number): this {
     const halfWidth = width / 2;
@@ -66,7 +85,9 @@ export class OrthographicCamera extends Camera {
   }
 
   /**
-   * Mirrors the canvas size and observes future resizes.
+   * Mirrors the canvas size and observes future resizes automatically.
+   * @param canvas - The canvas element to synchronize with
+   * @returns This camera instance for method chaining
    */
   updateViewport(canvas: HTMLCanvasElement): this {
     this.disposeResizeObserver();

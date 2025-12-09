@@ -58,16 +58,13 @@ const RENDERABLE_FORMATS: Set<GPUTextureFormat> = new Set([
 
 /**
  * Calculates the number of mip levels for a texture of given dimensions.
- *
  * @param width - Texture width in pixels
  * @param height - Texture height in pixels
  * @returns The number of mip levels (minimum 1)
- *
  * @example
- * ```typescript
- * calculateMipLevelCount(256, 256); // returns 9 (256 -> 128 -> 64 -> 32 -> 16 -> 8 -> 4 -> 2 -> 1)
- * calculateMipLevelCount(1024, 512); // returns 11
- * calculateMipLevelCount(1, 1); // returns 1
+ * ```ts
+ * calculateMipLevelCount(256, 256); // 9
+ * calculateMipLevelCount(1024, 512); // 11
  * ```
  */
 export function calculateMipLevelCount(width: number, height: number): number {
@@ -76,9 +73,8 @@ export function calculateMipLevelCount(width: number, height: number): number {
 
 /**
  * Checks if a texture format supports rendering (can be used as render attachment).
- *
  * @param format - The texture format to check
- * @returns true if the format can be rendered to
+ * @returns True if the format can be rendered to
  */
 export function isRenderableFormat(format: GPUTextureFormat): boolean {
   return RENDERABLE_FORMATS.has(format);
@@ -87,19 +83,13 @@ export function isRenderableFormat(format: GPUTextureFormat): boolean {
 /**
  * Generates mipmaps for WebGPU textures using render passes.
  *
- * WebGPU doesn't provide automatic mipmap generation like WebGL's generateMipmap().
- * This class implements mipmap generation using a fullscreen triangle render pass
- * that downsamples each mip level from the previous one.
- *
- * Uses a WeakMap-based static cache for device-specific instances to avoid
- * creating multiple generators per device.
+ * Implements fullscreen triangle-based mipmap generation by downsampling each
+ * level from the previous one. Uses a WeakMap cache to avoid creating multiple
+ * generators per device.
  *
  * @example
- * ```typescript
- * // Get or create generator for device (cached automatically)
+ * ```ts
  * const generator = MipmapGenerator.get(device);
- *
- * // Generate mipmaps for a texture
  * generator.generateMipmap(texture);
  * ```
  */
@@ -115,9 +105,8 @@ export class MipmapGenerator {
 
   /**
    * Creates a new MipmapGenerator instance.
-   * Prefer using MipmapGenerator.get() for automatic caching.
-   *
    * @param device - The WebGPU device
+   * @remarks Prefer using MipmapGenerator.get() for automatic caching.
    */
   constructor(device: GPUDevice) {
     this._device = device;
@@ -161,11 +150,8 @@ export class MipmapGenerator {
 
   /**
    * Gets or creates a MipmapGenerator instance for the given device.
-   * Instances are cached per device using a WeakMap, so the generator
-   * will be garbage collected when the device is no longer referenced.
-   *
    * @param device - The WebGPU device
-   * @returns A MipmapGenerator instance for the device
+   * @returns A cached MipmapGenerator instance for the device
    */
   static get(device: GPUDevice): MipmapGenerator {
     let generator = MipmapGenerator._cache.get(device);
@@ -178,10 +164,8 @@ export class MipmapGenerator {
 
   /**
    * Gets or creates a render pipeline for the specified texture format.
-   * Pipelines are cached per format.
-   *
    * @param format - The texture format
-   * @returns A render pipeline configured for the format
+   * @returns A cached render pipeline configured for the format
    */
   private getPipeline(format: GPUTextureFormat): GPURenderPipeline {
     let pipeline = this._pipelines.get(format);
@@ -208,27 +192,18 @@ export class MipmapGenerator {
   }
 
   /**
-   * Generates mipmaps for a texture.
-   *
-   * The texture must have been created with:
-   * - `mipLevelCount > 1`
-   * - `GPUTextureUsage.RENDER_ATTACHMENT` usage flag
-   * - A renderable format (rgba8unorm, rgba8unorm-srgb, bgra8unorm, bgra8unorm-srgb, etc.)
-   *
-   * @param texture - The GPUTexture to generate mipmaps for
-   *
+   * Generates mipmaps for a texture by downsampling each level from the previous one.
+   * @param texture - The GPUTexture to generate mipmaps for (must have mipLevelCount > 1, RENDER_ATTACHMENT usage, and renderable format)
    * @example
-   * ```typescript
+   * ```ts
    * const texture = device.createTexture({
-   *   size: [width, height],
+   *   size: [512, 512],
    *   format: 'rgba8unorm',
-   *   mipLevelCount: calculateMipLevelCount(width, height),
+   *   mipLevelCount: calculateMipLevelCount(512, 512),
    *   usage: GPUTextureUsage.TEXTURE_BINDING |
    *          GPUTextureUsage.COPY_DST |
    *          GPUTextureUsage.RENDER_ATTACHMENT,
    * });
-   *
-   * // Upload base level data...
    *
    * const generator = MipmapGenerator.get(device);
    * generator.generateMipmap(texture);
