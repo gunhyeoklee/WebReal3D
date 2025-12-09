@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { computeBoundingBox, computeBoundingSphere } from "./BoundingUtils";
 import { BoxGeometry } from "./BoxGeometry";
 import { PlaneGeometry } from "./PlaneGeometry";

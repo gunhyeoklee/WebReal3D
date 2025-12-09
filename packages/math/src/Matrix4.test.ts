@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { Matrix4 } from "./Matrix4";
 import { Vector3 } from "./Vector3";
 

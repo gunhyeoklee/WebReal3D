@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { FrustumGeometry } from "./FrustumGeometry";
 import { PerspectiveCamera } from "../camera/PerspectiveCamera";
 import { OrthographicCamera } from "../camera/OrthographicCamera";

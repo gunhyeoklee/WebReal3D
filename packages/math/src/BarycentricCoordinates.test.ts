@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { BarycentricCoordinates } from "./BarycentricCoordinates";
 import { Vector2 } from "./Vector2";
 import { Vector3 } from "./Vector3";

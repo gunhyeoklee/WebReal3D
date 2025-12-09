@@ -33,5 +33,6 @@ coverage
 
 # For Prompt Engineering
 PLAN.md
-AGENTS.md
 CLAUDE.md
+AGENTS.md
+.github/agents

@@ -15,10 +15,12 @@
   },
   "scripts": {
     "prebuild": "rm -rf dist",
-    "build": "tsc -p tsconfig.build.json && vite build --config vite.config.ts",
-    "test": "vitest run --config vitest.config.ts"
+    "build": "tsc -p tsconfig.build.json && vite build --config vite.config.ts"
   },
   "dependencies": {
     "@web-real/math": "workspace:*"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.67"
   }
 }
