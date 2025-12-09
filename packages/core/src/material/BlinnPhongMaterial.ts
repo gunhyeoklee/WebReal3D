@@ -23,8 +23,8 @@ export class BlinnPhongMaterial implements Material {
   private _shininess: number;
   wireframe: boolean;
   readonly displacementMap?: Texture;
-  readonly displacementScale: number;
-  readonly displacementBias: number;
+  private _displacementScale: number;
+  private _displacementBias: number;
   readonly normalMap?: Texture;
   private _normalScale: number;
 
@@ -40,6 +40,14 @@ export class BlinnPhongMaterial implements Material {
     return this._normalScale;
   }
 
+  get displacementScale(): number {
+    return this._displacementScale;
+  }
+
+  get displacementBias(): number {
+    return this._displacementBias;
+  }
+
   constructor(options: BlinnPhongMaterialOptions = {}) {
     this._color = options.color
       ? Color.from(options.color)
@@ -47,8 +55,8 @@ export class BlinnPhongMaterial implements Material {
     this._shininess = options.shininess ?? 32.0;
     this.wireframe = options.wireframe ?? false;
     this.displacementMap = options.displacementMap;
-    this.displacementScale = options.displacementScale ?? 1.0;
-    this.displacementBias = options.displacementBias ?? 0.0;
+    this._displacementScale = options.displacementScale ?? 1.0;
+    this._displacementBias = options.displacementBias ?? 0.0;
     this.normalMap = options.normalMap;
     this._normalScale = options.normalScale ?? 1.0;
   }
@@ -83,6 +91,30 @@ export class BlinnPhongMaterial implements Material {
       throw new Error("Normal scale must be between 0 and 3");
     }
     this._normalScale = value;
+  }
+
+  /**
+   * Sets the displacement map scale multiplier.
+   * @param value - Displacement scale value (0-10)
+   * @throws Error if value is out of range
+   */
+  setDisplacementScale(value: number): void {
+    if (value < 0 || value > 10) {
+      throw new Error("Displacement scale must be between 0 and 10");
+    }
+    this._displacementScale = value;
+  }
+
+  /**
+   * Sets the displacement map bias offset.
+   * @param value - Displacement bias value (-1 to 1)
+   * @throws Error if value is out of range
+   */
+  setDisplacementBias(value: number): void {
+    if (value < -1 || value > 1) {
+      throw new Error("Displacement bias must be between -1 and 1");
+    }
+    this._displacementBias = value;
   }
 
   getVertexShader(): string {

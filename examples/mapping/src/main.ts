@@ -257,16 +257,18 @@ async function main() {
     materialFolder
       .add(params, "displacementScale", 0, 1, 0.01)
       .name("Displacement Scale")
-      .onChange(() => {
-        materials = createMaterials(params);
-        createPlaneMeshes(scene, params, materials);
+      .onChange((v: number) => {
+        materials.materialXY.setDisplacementScale(v);
+        materials.materialXZ.setDisplacementScale(v);
+        materials.materialYZ.setDisplacementScale(v);
       });
     materialFolder
       .add(params, "displacementBias", -0.5, 0.5, 0.01)
       .name("Displacement Bias")
-      .onChange(() => {
-        materials = createMaterials(params);
-        createPlaneMeshes(scene, params, materials);
+      .onChange((v: number) => {
+        materials.materialXY.setDisplacementBias(v);
+        materials.materialXZ.setDisplacementBias(v);
+        materials.materialYZ.setDisplacementBias(v);
       });
 
     const lightFolder = gui.addFolder("Directional Light");
