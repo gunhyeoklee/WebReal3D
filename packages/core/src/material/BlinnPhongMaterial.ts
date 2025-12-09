@@ -219,7 +219,8 @@ export class BlinnPhongMaterial implements Material {
   /**
    * Writes material uniforms to the GPU buffer.
    * @param buffer - DataView of the uniform buffer
-   * @param offset - Byte offset to start writing (default: 64)
+   * @param offset - Byte offset to start writing (default: 64). This represents the absolute position
+   *                 where modelMatrix begins. All subsequent writes use relative offsets from this parameter.
    * @param context - Rendering context with camera, scene, and mesh data
    */
   writeUniformData(
@@ -227,117 +228,206 @@ export class BlinnPhongMaterial implements Material {
     offset: number = 64,
     context?: RenderContext
   ): void {
-    // Write model matrix at offset 64
-    if (context?.mesh) {
-      for (let i = 0; i < 16; i++) {
-        buffer.setFloat32(
-          offset + i * 4,
-          context.mesh.worldMatrix.data[i],
-          true
-        );
-      }
-    }
+    this._writeModelMatrix(buffer, offset, context);
+    this._writeNormalMatrix(buffer, offset, context);
+    this._writeColorAndShininess(buffer, offset);
 
-    // Write normal matrix at offset 128 (inverse transpose of model matrix)
-    if (context?.mesh) {
-      const normalMatrix = context.mesh.worldMatrix.inverse().transpose();
-      for (let i = 0; i < 16; i++) {
-        buffer.setFloat32(offset + 64 + i * 4, normalMatrix.data[i], true);
-      }
-    }
-
-    // Write colorAndShininess at offset 192 (rgb = color, a = shininess)
-    buffer.setFloat32(offset + 128, this.color.r, true); // offset 192
-    buffer.setFloat32(offset + 132, this.color.g, true); // offset 196
-    buffer.setFloat32(offset + 136, this.color.b, true); // offset 200
-    buffer.setFloat32(offset + 140, this.shininess, true); // offset 204
-
-    // Get first light from context (pre-collected by Renderer)
     const light = context?.lights?.[0];
-
-    // Write light data: offset 208 (lightPosition), 224 (lightColor), 256 (lightParams), 272 (lightTypes)
-    if (light) {
-      if (light instanceof DirectionalLight) {
-        // Directional light: xyz = direction
-        buffer.setFloat32(offset + 144, light.direction.x, true); // offset 208
-        buffer.setFloat32(offset + 148, light.direction.y, true); // offset 212
-        buffer.setFloat32(offset + 152, light.direction.z, true); // offset 216
-        buffer.setFloat32(offset + 156, 0, true); // offset 220 (w unused)
-
-        // Light params: not used for directional light
-        buffer.setFloat32(offset + 192, 0, true); // offset 256
-        buffer.setFloat32(offset + 196, 0, true); // offset 260
-        buffer.setFloat32(offset + 200, 0, true); // offset 264
-        buffer.setFloat32(offset + 204, 0, true); // offset 268
-
-        // Light types: x = 0 (directional), y = 0 (unused)
-        buffer.setFloat32(offset + 208, 0, true); // offset 272
-        buffer.setFloat32(offset + 212, 0, true); // offset 276
-        buffer.setFloat32(offset + 216, 0, true); // offset 280
-        buffer.setFloat32(offset + 220, 0, true); // offset 284
-      } else if (light instanceof PointLight) {
-        // Point light: xyz = world position
-        light.updateWorldMatrix(true, false);
-        buffer.setFloat32(offset + 144, light.worldMatrix.data[12], true); // offset 208
-        buffer.setFloat32(offset + 148, light.worldMatrix.data[13], true); // offset 212
-        buffer.setFloat32(offset + 152, light.worldMatrix.data[14], true); // offset 216
-        buffer.setFloat32(offset + 156, 0, true); // offset 220 (w unused)
-
-        // Light params: x = range, y = attenuation param
-        const attenuationFactors = light.getAttenuationFactors();
-        buffer.setFloat32(offset + 192, attenuationFactors[0], true); // offset 256 (range)
-        buffer.setFloat32(offset + 196, attenuationFactors[1], true); // offset 260 (param)
-        buffer.setFloat32(offset + 200, 0, true); // offset 264
-        buffer.setFloat32(offset + 204, 0, true); // offset 268
-
-        // Light types: x = 1 (point), y = attenuation type
-        buffer.setFloat32(offset + 208, 1, true); // offset 272 (light type: point)
-        buffer.setFloat32(offset + 212, attenuationFactors[3], true); // offset 276 (attenuation type)
-        buffer.setFloat32(offset + 216, 0, true); // offset 280
-        buffer.setFloat32(offset + 220, 0, true); // offset 284
-      }
-
-      // Light color (common for all light types)
-      buffer.setFloat32(offset + 160, light.color.r, true); // offset 224
-      buffer.setFloat32(offset + 164, light.color.g, true); // offset 228
-      buffer.setFloat32(offset + 168, light.color.b, true); // offset 232
-      buffer.setFloat32(offset + 172, light.intensity, true); // offset 236
-    } else {
-      // Default light if none in scene (directional from above)
-      buffer.setFloat32(offset + 144, 0, true); // offset 208
-      buffer.setFloat32(offset + 148, -1, true); // offset 212
-      buffer.setFloat32(offset + 152, 0, true); // offset 216
-      buffer.setFloat32(offset + 156, 0, true); // offset 220
-
-      buffer.setFloat32(offset + 160, 1, true); // offset 224 (r)
-      buffer.setFloat32(offset + 164, 1, true); // offset 228 (g)
-      buffer.setFloat32(offset + 168, 1, true); // offset 232 (b)
-      buffer.setFloat32(offset + 172, 1, true); // offset 236 (intensity)
-
-      buffer.setFloat32(offset + 192, 0, true); // offset 256
-      buffer.setFloat32(offset + 196, 0, true); // offset 260
-      buffer.setFloat32(offset + 200, 0, true); // offset 264
-      buffer.setFloat32(offset + 204, 0, true); // offset 268
-
-      buffer.setFloat32(offset + 208, 0, true); // offset 272 (directional)
-      buffer.setFloat32(offset + 212, 0, true); // offset 276
-      buffer.setFloat32(offset + 216, 0, true); // offset 280
-      buffer.setFloat32(offset + 220, 0, true); // offset 284
+    if (!light) {
+      this._writeDefaultLight(buffer, offset);
+    } else if (light instanceof DirectionalLight) {
+      this._writeDirectionalLight(buffer, offset, light);
+    } else if (light instanceof PointLight) {
+      this._writePointLight(buffer, offset, light);
     }
 
-    // Write camera position at offset 240
-    if (context?.camera) {
-      const cameraWorldMatrix = context.camera.worldMatrix.data;
-      buffer.setFloat32(offset + 176, cameraWorldMatrix[12], true); // offset 240
-      buffer.setFloat32(offset + 180, cameraWorldMatrix[13], true); // offset 244
-      buffer.setFloat32(offset + 184, cameraWorldMatrix[14], true); // offset 248
-      buffer.setFloat32(offset + 188, 0, true); // offset 252 (w unused)
-    }
+    this._writeCameraPosition(buffer, offset, context);
+    this._writeDisplacementParams(buffer, offset);
+  }
 
-    // Write displacement params at offset 288 (vec4f: x=scale, y=bias, z=normalScale, w=unused)
-    buffer.setFloat32(offset + 224, this.displacementScale, true); // offset 288
-    buffer.setFloat32(offset + 228, this.displacementBias, true); // offset 292
-    buffer.setFloat32(offset + 232, this.normalScale, true); // offset 296 (normalScale)
-    buffer.setFloat32(offset + 236, 0, true); // offset 300 (unused)
+  /**
+   * Writes model matrix to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (modelMatrix at offset+0)
+   * @param context - Rendering context
+   */
+  private _writeModelMatrix(
+    buffer: DataView,
+    offset: number,
+    context?: RenderContext
+  ): void {
+    if (!context?.mesh) return;
+
+    for (let i = 0; i < 16; i++) {
+      buffer.setFloat32(offset + i * 4, context.mesh.worldMatrix.data[i], true);
+    }
+  }
+
+  /**
+   * Writes normal matrix (inverse transpose of model matrix) to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (normalMatrix at offset+64)
+   * @param context - Rendering context
+   */
+  private _writeNormalMatrix(
+    buffer: DataView,
+    offset: number,
+    context?: RenderContext
+  ): void {
+    if (!context?.mesh) return;
+
+    const normalMatrix = context.mesh.worldMatrix.inverse().transpose();
+    for (let i = 0; i < 16; i++) {
+      buffer.setFloat32(offset + 64 + i * 4, normalMatrix.data[i], true);
+    }
+  }
+
+  /**
+   * Writes color and shininess to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (colorAndShininess at offset+128)
+   */
+  private _writeColorAndShininess(buffer: DataView, offset: number): void {
+    buffer.setFloat32(offset + 128, this.color.r, true);
+    buffer.setFloat32(offset + 132, this.color.g, true);
+    buffer.setFloat32(offset + 136, this.color.b, true);
+    buffer.setFloat32(offset + 140, this.shininess, true);
+  }
+
+  /**
+   * Writes directional light data to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset
+   * @param light - Directional light instance
+   */
+  private _writeDirectionalLight(
+    buffer: DataView,
+    offset: number,
+    light: DirectionalLight
+  ): void {
+    // Direction at offset+144
+    buffer.setFloat32(offset + 144, light.direction.x, true);
+    buffer.setFloat32(offset + 148, light.direction.y, true);
+    buffer.setFloat32(offset + 152, light.direction.z, true);
+    buffer.setFloat32(offset + 156, 0, true);
+
+    // Color at offset+160
+    buffer.setFloat32(offset + 160, light.color.r, true);
+    buffer.setFloat32(offset + 164, light.color.g, true);
+    buffer.setFloat32(offset + 168, light.color.b, true);
+    buffer.setFloat32(offset + 172, light.intensity, true);
+
+    // Light params at offset+192 (unused for directional)
+    buffer.setFloat32(offset + 192, 0, true);
+    buffer.setFloat32(offset + 196, 0, true);
+    buffer.setFloat32(offset + 200, 0, true);
+    buffer.setFloat32(offset + 204, 0, true);
+
+    // Light types at offset+208 (type=0 for directional)
+    buffer.setFloat32(offset + 208, 0, true);
+    buffer.setFloat32(offset + 212, 0, true);
+    buffer.setFloat32(offset + 216, 0, true);
+    buffer.setFloat32(offset + 220, 0, true);
+  }
+
+  /**
+   * Writes point light data to the uniform buffer.
+
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset
+   * @param light - Point light instance
+   */
+  private _writePointLight(
+    buffer: DataView,
+    offset: number,
+    light: PointLight
+  ): void {
+    light.updateWorldMatrix(true, false);
+    buffer.setFloat32(offset + 144, light.worldMatrix.data[12], true);
+    buffer.setFloat32(offset + 148, light.worldMatrix.data[13], true);
+    buffer.setFloat32(offset + 152, light.worldMatrix.data[14], true);
+    buffer.setFloat32(offset + 156, 0, true);
+
+    // Color at offset+160
+    buffer.setFloat32(offset + 160, light.color.r, true);
+    buffer.setFloat32(offset + 164, light.color.g, true);
+    buffer.setFloat32(offset + 168, light.color.b, true);
+    buffer.setFloat32(offset + 172, light.intensity, true);
+
+    // Light params at offset+192 (range and attenuation)
+    const attenuationFactors = light.getAttenuationFactors();
+    buffer.setFloat32(offset + 192, attenuationFactors[0], true); // range
+    buffer.setFloat32(offset + 196, attenuationFactors[1], true); // param
+    buffer.setFloat32(offset + 200, 0, true);
+    buffer.setFloat32(offset + 204, 0, true);
+
+    // Light types at offset+208 (type=1 for point)
+    buffer.setFloat32(offset + 208, 1, true); // point light
+    buffer.setFloat32(offset + 212, attenuationFactors[3], true); // attenuation type
+    buffer.setFloat32(offset + 216, 0, true);
+    buffer.setFloat32(offset + 220, 0, true);
+  }
+
+  /**
+   * Writes default light data when no light is in the scene.
+
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset
+   */
+  private _writeDefaultLight(buffer: DataView, offset: number): void {
+    buffer.setFloat32(offset + 144, 0, true);
+    buffer.setFloat32(offset + 148, -1, true);
+    buffer.setFloat32(offset + 152, 0, true);
+    buffer.setFloat32(offset + 156, 0, true);
+
+    // Color at offset+160 (white, full intensity)
+    buffer.setFloat32(offset + 160, 1, true);
+    buffer.setFloat32(offset + 164, 1, true);
+    buffer.setFloat32(offset + 168, 1, true);
+    buffer.setFloat32(offset + 172, 1, true);
+
+    // Light params at offset+192
+    buffer.setFloat32(offset + 192, 0, true);
+    buffer.setFloat32(offset + 196, 0, true);
+    buffer.setFloat32(offset + 200, 0, true);
+    buffer.setFloat32(offset + 204, 0, true);
+
+    // Light types at offset+208 (directional)
+    buffer.setFloat32(offset + 208, 0, true);
+    buffer.setFloat32(offset + 212, 0, true);
+    buffer.setFloat32(offset + 216, 0, true);
+    buffer.setFloat32(offset + 220, 0, true);
+  }
+
+  /**
+   * Writes camera position to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (cameraPosition at offset+176)
+   * @param context - Rendering context
+   */
+  private _writeCameraPosition(
+    buffer: DataView,
+    offset: number,
+    context?: RenderContext
+  ): void {
+    if (!context?.camera) return;
+
+    const cameraWorldMatrix = context.camera.worldMatrix.data;
+    buffer.setFloat32(offset + 176, cameraWorldMatrix[12], true);
+    buffer.setFloat32(offset + 180, cameraWorldMatrix[13], true);
+    buffer.setFloat32(offset + 184, cameraWorldMatrix[14], true);
+    buffer.setFloat32(offset + 188, 0, true);
+  }
+
+  /**
+   * Writes displacement map parameters to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (displacement params at offset+224)
+   */
+  private _writeDisplacementParams(buffer: DataView, offset: number): void {
+    buffer.setFloat32(offset + 224, this.displacementScale, true);
+    buffer.setFloat32(offset + 228, this.displacementBias, true);
+    buffer.setFloat32(offset + 232, this.normalScale, true);
+    buffer.setFloat32(offset + 236, 0, true);
   }
 }

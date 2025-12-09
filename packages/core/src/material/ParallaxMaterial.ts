@@ -212,7 +212,8 @@ export class ParallaxMaterial implements Material {
   /**
    * Writes camera position, material parameters, and light data to the uniform buffer.
    * @param buffer - DataView of the uniform buffer
-   * @param offset - Byte offset to start writing (default: 64 after MVP matrix)
+   * @param offset - Byte offset to start writing (default: 64). This represents the absolute position
+   *                 where modelMatrix begins. All subsequent writes use relative offsets from this parameter.
    * @param context - Rendering context with camera, scene, and mesh information
    */
   writeUniformData(
@@ -220,60 +221,110 @@ export class ParallaxMaterial implements Material {
     offset: number = 64,
     context?: RenderContext
   ): void {
-    // Write model matrix at offset 64
-    if (context?.mesh) {
-      for (let i = 0; i < 16; i++) {
-        buffer.setFloat32(
-          offset + i * 4,
-          context.mesh.worldMatrix.data[i],
-          true
-        );
-      }
-    }
+    this._writeModelMatrix(buffer, offset, context);
+    this._writeCameraPosition(buffer, offset, context);
+    this._writeMaterialParams(buffer, offset);
 
-    // Write camera position at offset 128 (vec4f: xyz = position, w unused)
-    if (context?.camera) {
-      const cameraWorldMatrix = context.camera.worldMatrix.data;
-      buffer.setFloat32(offset + 64, cameraWorldMatrix[12], true); // offset 128
-      buffer.setFloat32(offset + 68, cameraWorldMatrix[13], true); // offset 132
-      buffer.setFloat32(offset + 72, cameraWorldMatrix[14], true); // offset 136
-      buffer.setFloat32(offset + 76, 0, true); // offset 140 (w unused)
-    }
-
-    // Write material params at offset 144 (vec4f: x=depthScale, y=normalScale, z=useNormalMap, w=shininess)
-    buffer.setFloat32(offset + 80, this.depthScale, true); // offset 144 (materialParams.x)
-    buffer.setFloat32(offset + 84, this.normalScale, true); // offset 148 (materialParams.y)
-    buffer.setFloat32(offset + 88, this.normal ? 1 : 0, true); // offset 152 (materialParams.z)
-    buffer.setFloat32(offset + 92, this.shininess, true); // offset 156 (materialParams.w)
-
-    // Get first light from context (pre-collected by Renderer)
     const light = context?.lights?.[0];
-
-    // Write light data at offset 160+
     if (light instanceof PointLight) {
-      light.updateWorldMatrix(true, false);
-      // Write light position at offset 160 (vec4f: xyz = position, w unused)
-      buffer.setFloat32(offset + 96, light.worldMatrix.data[12], true); // offset 160
-      buffer.setFloat32(offset + 100, light.worldMatrix.data[13], true); // offset 164
-      buffer.setFloat32(offset + 104, light.worldMatrix.data[14], true); // offset 168
-      buffer.setFloat32(offset + 108, 0, true); // offset 172 (w unused)
-
-      // Write light color at offset 176 (vec4f: rgb = color, a = intensity)
-      buffer.setFloat32(offset + 112, light.color.r, true); // offset 176
-      buffer.setFloat32(offset + 116, light.color.g, true); // offset 180
-      buffer.setFloat32(offset + 120, light.color.b, true); // offset 184
-      buffer.setFloat32(offset + 124, light.intensity, true); // offset 188
+      this._writePointLight(buffer, offset, light);
     } else {
-      // Default light values
-      buffer.setFloat32(offset + 96, 2, true); // offset 160 (x)
-      buffer.setFloat32(offset + 100, 2, true); // offset 164 (y)
-      buffer.setFloat32(offset + 104, 3, true); // offset 168 (z)
-      buffer.setFloat32(offset + 108, 0, true); // offset 172 (w unused)
-
-      buffer.setFloat32(offset + 112, 1, true); // offset 176 (r)
-      buffer.setFloat32(offset + 116, 1, true); // offset 180 (g)
-      buffer.setFloat32(offset + 120, 1, true); // offset 184 (b)
-      buffer.setFloat32(offset + 124, 1, true); // offset 188 (intensity)
+      this._writeDefaultLight(buffer, offset);
     }
+  }
+
+  /**
+   * Writes model matrix to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (modelMatrix at offset+0)
+   * @param context - Rendering context
+   */
+  private _writeModelMatrix(
+    buffer: DataView,
+    offset: number,
+    context?: RenderContext
+  ): void {
+    if (!context?.mesh) return;
+
+    for (let i = 0; i < 16; i++) {
+      buffer.setFloat32(offset + i * 4, context.mesh.worldMatrix.data[i], true);
+    }
+  }
+
+  /**
+   * Writes camera position to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (cameraPosition at offset+64)
+   * @param context - Rendering context
+   */
+  private _writeCameraPosition(
+    buffer: DataView,
+    offset: number,
+    context?: RenderContext
+  ): void {
+    if (!context?.camera) return;
+
+    const cameraWorldMatrix = context.camera.worldMatrix.data;
+    buffer.setFloat32(offset + 64, cameraWorldMatrix[12], true);
+    buffer.setFloat32(offset + 68, cameraWorldMatrix[13], true);
+    buffer.setFloat32(offset + 72, cameraWorldMatrix[14], true);
+    buffer.setFloat32(offset + 76, 0, true);
+  }
+
+  /**
+   * Writes material parameters to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (materialParams at offset+80)
+   */
+  private _writeMaterialParams(buffer: DataView, offset: number): void {
+    buffer.setFloat32(offset + 80, this.depthScale, true);
+    buffer.setFloat32(offset + 84, this.normalScale, true);
+    buffer.setFloat32(offset + 88, this.normal ? 1 : 0, true);
+    buffer.setFloat32(offset + 92, this.shininess, true);
+  }
+
+  /**
+   * Writes point light data to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (light data at offset+96)
+   * @param light - Point light instance
+   */
+  private _writePointLight(
+    buffer: DataView,
+    offset: number,
+    light: PointLight
+  ): void {
+    light.updateWorldMatrix(true, false);
+
+    // Light position at offset+96
+    buffer.setFloat32(offset + 96, light.worldMatrix.data[12], true);
+    buffer.setFloat32(offset + 100, light.worldMatrix.data[13], true);
+    buffer.setFloat32(offset + 104, light.worldMatrix.data[14], true);
+    buffer.setFloat32(offset + 108, 0, true);
+
+    // Light color at offset+112
+    buffer.setFloat32(offset + 112, light.color.r, true);
+    buffer.setFloat32(offset + 116, light.color.g, true);
+    buffer.setFloat32(offset + 120, light.color.b, true);
+    buffer.setFloat32(offset + 124, light.intensity, true);
+  }
+
+  /**
+   * Writes default light data to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (light data at offset+96)
+   */
+  private _writeDefaultLight(buffer: DataView, offset: number): void {
+    // Default light position at offset+96
+    buffer.setFloat32(offset + 96, 2, true);
+    buffer.setFloat32(offset + 100, 2, true);
+    buffer.setFloat32(offset + 104, 3, true);
+    buffer.setFloat32(offset + 108, 0, true);
+
+    // Default light color at offset+112
+    buffer.setFloat32(offset + 112, 1, true);
+    buffer.setFloat32(offset + 116, 1, true);
+    buffer.setFloat32(offset + 120, 1, true);
+    buffer.setFloat32(offset + 124, 1, true);
   }
 }

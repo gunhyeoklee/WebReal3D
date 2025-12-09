@@ -90,9 +90,19 @@ export class BasicMaterial implements Material {
   /**
    * Writes the material color to the uniform buffer.
    * @param buffer - DataView of the uniform buffer
-   * @param offset - Byte offset to start writing (default: 64 after MVP matrix)
+   * @param offset - Byte offset to start writing (default: 64). This represents the absolute position
+   *                 where color data begins. All subsequent writes use relative offsets from this parameter.
    */
   writeUniformData(buffer: DataView, offset: number = 64): void {
+    this._writeColor(buffer, offset);
+  }
+
+  /**
+   * Writes color to the uniform buffer.
+   * @param buffer - DataView of the uniform buffer
+   * @param offset - Base offset (color at offset+0)
+   */
+  private _writeColor(buffer: DataView, offset: number): void {
     buffer.setFloat32(offset, this.color.r, true);
     buffer.setFloat32(offset + 4, this.color.g, true);
     buffer.setFloat32(offset + 8, this.color.b, true);
