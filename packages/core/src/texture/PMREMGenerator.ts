@@ -12,47 +12,24 @@ import prefilterShader from "../shaders/pmrem/prefilter.wgsl?raw";
 
 /**
  * Configuration options for PMREM generation.
- *
- * @example
- * ```ts
- * const options: PMREMOptions = {
- *   prefilteredSize: 512,
- *   irradianceSize: 64,
- *   format: 'rgba16float',
- *   sampleCount: 2048
- * };
- * ```
  */
 export interface PMREMOptions {
   /** Size of the prefiltered environment cubemap (default: 256) */
   prefilteredSize?: number;
-
   /** Size of the irradiance cubemap (default: 32, smaller is fine for diffuse) */
   irradianceSize?: number;
-
   /** Texture format (default: 'rgba16float') */
   format?: GPUTextureFormat;
-
-  /** Number of samples for importance sampling (default: 1024) */
-  sampleCount?: number;
 }
 
 /**
  * Result of PMREM generation containing all textures needed for IBL.
- *
- * @example
- * ```ts
- * const result = await generator.fromEquirectangular(envTexture);
- * const { prefilteredMap, irradianceMap, brdfLUT } = result;
- * ```
  */
 export interface PMREMResult {
   /** Prefiltered environment map with roughness-based mip levels */
   prefilteredMap: CubeTexture;
-
   /** Diffuse irradiance cubemap */
   irradianceMap: CubeTexture;
-
   /** BRDF integration LUT (shared across all materials) */
   brdfLUT: Texture;
 }
@@ -67,6 +44,12 @@ export interface PMREMResult {
  *
  * The output textures are used for physically-based image-based lighting
  * with the split-sum approximation.
+ *
+ * **Resource Lifecycle:**
+ * - Generator instances are cached per device using WeakMap
+ * - GPU resources (pipelines, samplers) are created lazily and reused
+ * - Call `dispose()` to explicitly release GPU resources when no longer needed
+ * - Temporary resources (uniform buffers) are cleaned up after each generation
  *
  * @example
  * ```ts
@@ -86,6 +69,9 @@ export interface PMREMResult {
  *   irradianceMap,
  *   // brdfLUT is automatically used
  * });
+ *
+ * // Clean up when done (optional, but recommended)
+ * generator.dispose();
  * ```
  */
 export class PMREMGenerator {
@@ -150,6 +136,19 @@ export class PMREMGenerator {
       !Number.isInteger(irradianceSize)
     ) {
       throw new Error("PMREMGenerator: Texture sizes must be integers");
+    }
+
+    // Validate power-of-two constraint for mipmapping
+    if ((prefilteredSize & (prefilteredSize - 1)) !== 0) {
+      console.warn(
+        `PMREMGenerator: prefilteredSize ${prefilteredSize} is not a power of 2. This may cause issues with mipmaps.`
+      );
+    }
+
+    if ((irradianceSize & (irradianceSize - 1)) !== 0) {
+      console.warn(
+        `PMREMGenerator: irradianceSize ${irradianceSize} is not a power of 2. This may cause issues with mipmaps.`
+      );
     }
 
     // Initialize pipelines if needed
@@ -296,10 +295,8 @@ export class PMREMGenerator {
         },
       });
     } catch (error) {
-      this._equirectToCubePipeline = null;
-      this._irradiancePipeline = null;
-      this._prefilterPipeline = null;
-      this._sampler = null;
+      // Clean up any partially created resources
+      this._cleanupResources();
       throw error;
     }
   }
@@ -330,6 +327,9 @@ export class PMREMGenerator {
     const commandEncoder = this._device.createCommandEncoder();
     const uniformData = new Uint32Array(this._uniformBuffer!);
 
+    // Create texture view once outside the loop
+    const envTextureView = envTexture.gpuTexture.createView();
+
     for (let face = CubeFace.PositiveX; face <= CubeFace.NegativeZ; face++) {
       const faceEnum = face as CubeFace;
 
@@ -342,7 +342,7 @@ export class PMREMGenerator {
         entries: [
           { binding: 0, resource: { buffer: uniformBuffer } },
           { binding: 1, resource: this._sampler! },
-          { binding: 2, resource: envTexture.gpuTexture.createView() },
+          { binding: 2, resource: envTextureView },
         ],
       });
 
@@ -505,6 +505,29 @@ export class PMREMGenerator {
     uniformBuffer.destroy();
 
     return prefilteredMap;
+  }
+
+  /**
+   * Releases all GPU resources held by this generator.
+   * @example
+   * ```ts
+   * const generator = PMREMGenerator.get(device);
+   * generator.dispose();
+   * ```
+   */
+  dispose(): void {
+    this._cleanupResources();
+  }
+
+  /**
+   * Internal method to clean up GPU resources.
+   * Sets all resource references to null after cleanup.
+   */
+  private _cleanupResources(): void {
+    this._equirectToCubePipeline = null;
+    this._irradiancePipeline = null;
+    this._prefilterPipeline = null;
+    this._sampler = null;
   }
 }
 
