@@ -8,6 +8,13 @@
  * @module Float16
  */
 
+// Float16 special value constants
+const FLOAT16_NAN = 0x7e00;
+const FLOAT16_POSITIVE_INFINITY = 0x7c00;
+const FLOAT16_NEGATIVE_INFINITY = 0xfc00;
+const FLOAT16_NEGATIVE_ZERO = 0x8000;
+const FLOAT16_POSITIVE_ZERO = 0x0000;
+
 /**
  * Converts a JavaScript number (float64) to IEEE 754 half-precision (float16).
  *
@@ -23,15 +30,15 @@
 export function toFloat16(value: number): number {
   // Handle special cases
   if (Number.isNaN(value)) {
-    return 0x7e00; // NaN
+    return FLOAT16_NAN;
   }
 
   if (!Number.isFinite(value)) {
-    return value > 0 ? 0x7c00 : 0xfc00; // +Inf or -Inf
+    return value > 0 ? FLOAT16_POSITIVE_INFINITY : FLOAT16_NEGATIVE_INFINITY;
   }
 
   if (value === 0) {
-    return Object.is(value, -0) ? 0x8000 : 0x0000; // -0 or +0
+    return Object.is(value, -0) ? FLOAT16_NEGATIVE_ZERO : FLOAT16_POSITIVE_ZERO;
   }
 
   // Use DataView for IEEE 754 bit manipulation
@@ -96,7 +103,7 @@ export function toFloat16(value: number): number {
           halfExponent++;
           if (halfExponent >= 0x1f) {
             // Overflow to infinity
-            return halfSign | 0x7c00;
+            return halfSign | FLOAT16_POSITIVE_INFINITY;
           }
         }
       }
@@ -119,6 +126,12 @@ export function toFloat16(value: number): number {
  * ```
  */
 export function fromFloat16(half: number): number {
+  if (half < 0 || half > 0xffff || !Number.isInteger(half)) {
+    throw new Error(
+      `Invalid float16 value: ${half}. Must be an integer in range [0, 65535]`
+    );
+  }
+
   const sign = (half >>> 15) & 0x1;
   const exponent = (half >>> 10) & 0x1f;
   const mantissa = half & 0x3ff;

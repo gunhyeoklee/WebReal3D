@@ -20,14 +20,14 @@ import {
 import { parse, type RGBEResult, RGBEParserError } from "./RGBEParser";
 import { toFloat16Array } from "./Float16";
 
-/**
- * Supported HDR texture formats.
- */
+const BYTES_PER_CHANNEL_F16 = 2;
+const BYTES_PER_CHANNEL_F32 = 4;
+const RGBA_CHANNELS = 4;
+const BYTES_PER_PIXEL_F16 = RGBA_CHANNELS * BYTES_PER_CHANNEL_F16; // 8 bytes
+const BYTES_PER_PIXEL_F32 = RGBA_CHANNELS * BYTES_PER_CHANNEL_F32; // 16 bytes
+
 export type HDRFormat = "rgba16float" | "rgba32float";
 
-/**
- * Options for HDR texture loading.
- */
 export interface HDRLoaderOptions
   extends Omit<TextureOptions, "format" | "srgb"> {
   /**
@@ -36,7 +36,6 @@ export interface HDRLoaderOptions
    * - `rgba32float`: Full precision (32-bit), highest quality but 2x memory
    */
   format?: HDRFormat;
-
   /**
    * Apply exposure correction from HDR file header.
    * When true, pixel values are multiplied by the exposure value in the file.
@@ -45,9 +44,6 @@ export interface HDRLoaderOptions
   applyExposure?: boolean;
 }
 
-/**
- * Error class for HDR loading failures.
- */
 export class HDRLoaderError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
@@ -57,7 +53,6 @@ export class HDRLoaderError extends Error {
 
 /**
  * Loader for Radiance HDR (.hdr) files.
- *
  * Converts HDR images to WebGPU textures with proper float encoding
  * for use in physically-based rendering and image-based lighting.
  *
@@ -81,7 +76,6 @@ export class HDRLoaderError extends Error {
 export class HDRLoader {
   /**
    * Loads an HDR texture from a URL.
-   *
    * @param device - The WebGPU device
    * @param url - URL to the .hdr file
    * @param options - Loading options
@@ -93,9 +87,16 @@ export class HDRLoader {
     url: string,
     options: HDRLoaderOptions = {}
   ): Promise<Texture> {
+    if (!device) {
+      throw new HDRLoaderError("GPU device is required");
+    }
+    if (!url || typeof url !== "string" || url.trim().length === 0) {
+      throw new HDRLoaderError("Valid URL string is required");
+    }
+
     try {
-      // Fetch the HDR file
       const response = await fetch(url);
+
       if (!response.ok) {
         throw new HDRLoaderError(
           `Failed to fetch HDR from ${url}: ${response.status} ${response.statusText}`
@@ -111,8 +112,16 @@ export class HDRLoader {
       if (error instanceof HDRLoaderError) {
         throw error;
       }
+
+      if (error instanceof TypeError) {
+        throw new HDRLoaderError(
+          `Network error while fetching HDR from ${url}: ${error.message}`,
+          error
+        );
+      }
+
       throw new HDRLoaderError(
-        `Failed to load HDR from ${url}: ${
+        `Unexpected error loading HDR from ${url}: ${
           error instanceof Error ? error.message : String(error)
         }`,
         error
@@ -122,7 +131,6 @@ export class HDRLoader {
 
   /**
    * Loads an HDR texture from an ArrayBuffer.
-   *
    * @param device - The WebGPU device
    * @param buffer - The HDR file data as ArrayBuffer
    * @param options - Loading options
@@ -134,16 +142,32 @@ export class HDRLoader {
     buffer: ArrayBuffer,
     options: HDRLoaderOptions = {}
   ): Promise<Texture> {
-    // Parse the HDR file
+    if (!device) {
+      throw new HDRLoaderError("GPU device is required");
+    }
+
+    if (!buffer || !(buffer instanceof ArrayBuffer)) {
+      throw new HDRLoaderError("Valid ArrayBuffer is required");
+    }
+
+    if (buffer.byteLength === 0) {
+      throw new HDRLoaderError("ArrayBuffer cannot be empty");
+    }
+
     let parsed: RGBEResult;
+
     try {
       parsed = parse(buffer);
     } catch (error) {
       if (error instanceof RGBEParserError) {
-        throw new HDRLoaderError(`HDR parsing failed: ${error.message}`, error);
+        throw new HDRLoaderError(
+          `Invalid HDR file format: ${error.message}`,
+          error
+        );
       }
+
       throw new HDRLoaderError(
-        `HDR parsing failed: ${
+        `Failed to parse HDR data: ${
           error instanceof Error ? error.message : String(error)
         }`,
         error
@@ -155,98 +179,125 @@ export class HDRLoader {
     const applyExposure = options.applyExposure !== false;
     const shouldGenerateMipmaps = options.generateMipmaps !== false;
 
-    // Apply exposure correction if enabled and exposure != 1.0
-    let processedData = data;
-    if (applyExposure && exposure !== 1.0) {
-      processedData = applyExposureCorrection(data, exposure);
+    if (width <= 0 || height <= 0) {
+      throw new HDRLoaderError(
+        `Invalid texture dimensions: ${width}x${height}`
+      );
     }
 
-    // Convert to appropriate format
-    let uploadData: Uint16Array | Float32Array;
-    let bytesPerPixel: number;
-
-    if (format === "rgba16float") {
-      uploadData = toFloat16Array(processedData);
-      bytesPerPixel = 8; // 4 channels * 2 bytes
-    } else {
-      uploadData = processedData;
-      bytesPerPixel = 16; // 4 channels * 4 bytes
-    }
-
-    // Check for required GPU features
+    // Check for required GPU features before processing
     if (
       format === "rgba32float" &&
       !device.features.has("float32-filterable")
     ) {
-      console.warn(
-        "[HDRLoader] Device does not support 'float32-filterable' feature. " +
-          "Linear filtering may not work correctly with rgba32float format."
+      throw new HDRLoaderError(
+        "Device does not support 'float32-filterable' feature required for rgba32float format. " +
+          "Use 'rgba16float' format instead or ensure the GPU supports this feature."
       );
     }
 
-    // Calculate mip levels
-    let mipLevelCount = 1;
-    if (shouldGenerateMipmaps && isRenderableFormat(format)) {
-      mipLevelCount = calculateMipLevelCount(width, height);
+    let gpuTexture: GPUTexture | null = null;
+    let gpuSampler: GPUSampler | null = null;
+
+    try {
+      // Apply exposure correction if enabled and exposure != 1.0
+      let processedData = data;
+      if (applyExposure && exposure !== 1.0) {
+        processedData = applyExposureCorrection(data, exposure);
+      }
+
+      // Convert to appropriate format
+      let uploadData: Uint16Array | Float32Array;
+      let bytesPerPixel: number;
+
+      if (format === "rgba16float") {
+        uploadData = toFloat16Array(processedData);
+        bytesPerPixel = BYTES_PER_PIXEL_F16;
+      } else {
+        uploadData = processedData;
+        bytesPerPixel = BYTES_PER_PIXEL_F32;
+      }
+
+      // Calculate mip levels
+      let mipLevelCount = 1;
+      if (shouldGenerateMipmaps && isRenderableFormat(format)) {
+        mipLevelCount = calculateMipLevelCount(width, height);
+      }
+
+      // Create GPU texture
+      gpuTexture = device.createTexture({
+        label: options.label ?? "HDRTexture",
+        size: [width, height, 1],
+        format: format as GPUTextureFormat, // Type assertion for WebGPU API compatibility
+        mipLevelCount,
+        usage:
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+
+      // Upload texture data
+      device.queue.writeTexture(
+        { texture: gpuTexture },
+        uploadData.buffer,
+        {
+          bytesPerRow: width * bytesPerPixel,
+          rowsPerImage: height,
+        },
+        [width, height, 1]
+      );
+
+      // Generate mipmaps if requested
+      if (mipLevelCount > 1) {
+        const mipmapGenerator = MipmapGenerator.get(device);
+        mipmapGenerator.generateMipmap(gpuTexture);
+      }
+
+      const samplerOptions: GPUSamplerDescriptor = {
+        ...DEFAULT_SAMPLER_OPTIONS,
+        // HDR textures typically use clamp-to-edge for environment maps
+        addressModeU: "clamp-to-edge",
+        addressModeV: "clamp-to-edge",
+        ...options.sampler,
+        label: options.label ? `Sampler: ${options.label}` : undefined,
+      };
+      gpuSampler = device.createSampler(samplerOptions);
+
+      return new Texture(
+        gpuTexture,
+        gpuSampler,
+        width,
+        height,
+        format,
+        mipLevelCount
+      );
+    } catch (error) {
+      if (gpuTexture) {
+        gpuTexture.destroy();
+      }
+
+      if (error instanceof HDRLoaderError) {
+        throw error;
+      }
+
+      throw new HDRLoaderError(
+        `Failed to create HDR texture: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error
+      );
     }
-
-    // Create GPU texture
-    const gpuTexture = device.createTexture({
-      label: options.label ?? "HDRTexture",
-      size: [width, height, 1],
-      format,
-      mipLevelCount,
-      usage:
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
-    // Upload texture data
-    device.queue.writeTexture(
-      { texture: gpuTexture },
-      uploadData.buffer,
-      {
-        bytesPerRow: width * bytesPerPixel,
-        rowsPerImage: height,
-      },
-      [width, height, 1]
-    );
-
-    // Generate mipmaps if requested
-    if (mipLevelCount > 1) {
-      const mipmapGenerator = MipmapGenerator.get(device);
-      mipmapGenerator.generateMipmap(gpuTexture);
-    }
-
-    // Create sampler
-    const samplerOptions: GPUSamplerDescriptor = {
-      ...DEFAULT_SAMPLER_OPTIONS,
-      // HDR textures typically use clamp-to-edge for environment maps
-      addressModeU: "clamp-to-edge",
-      addressModeV: "clamp-to-edge",
-      ...options.sampler,
-      label: options.label ? `Sampler: ${options.label}` : undefined,
-    };
-    const gpuSampler = device.createSampler(samplerOptions);
-
-    return new Texture(
-      gpuTexture,
-      gpuSampler,
-      width,
-      height,
-      format,
-      mipLevelCount
-    );
   }
 
   /**
    * Checks if a URL points to an HDR file based on extension.
-   *
    * @param url - The URL to check
    * @returns True if the URL has an .hdr extension
    */
   static isHDRFile(url: string): boolean {
+    if (!url || typeof url !== "string") {
+      return false;
+    }
     const cleanUrl = url.split("?")[0].split("#")[0]; // Remove query/hash
     return cleanUrl.toLowerCase().endsWith(".hdr");
   }
