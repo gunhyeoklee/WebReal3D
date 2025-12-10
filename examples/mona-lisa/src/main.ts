@@ -18,6 +18,7 @@ interface ParallaxParams {
   normalScale: number;
   shininess: number;
   // Light params
+  lightEnabled: boolean;
   lightPosZ: number;
   lightIntensity: number;
   lightColorR: number;
@@ -31,17 +32,40 @@ interface ParallaxParams {
 async function main() {
   const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
-  function updateCanvasSize() {
-    const displayWidth = canvas.clientWidth;
-    const displayHeight = canvas.clientHeight;
-    const dpr = window.devicePixelRatio || 1;
+  // Image dimensions
+  const imageWidth = 560;
+  const imageHeight = 1000;
+  const imageAspectRatio = imageWidth / imageHeight;
 
+  function updateCanvasSize() {
+    const container = canvas.parentElement!;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const containerAspectRatio = containerWidth / containerHeight;
+
+    let displayWidth: number;
+    let displayHeight: number;
+
+    // Fit image to container while maintaining aspect ratio
+    if (containerAspectRatio > imageAspectRatio) {
+      // Container is wider, fit to height
+      displayHeight = containerHeight;
+      displayWidth = displayHeight * imageAspectRatio;
+    } else {
+      // Container is taller, fit to width
+      displayWidth = containerWidth;
+      displayHeight = displayWidth / imageAspectRatio;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
     const width = Math.floor(displayWidth * dpr);
     const height = Math.floor(displayHeight * dpr);
 
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
     }
   }
 
@@ -60,6 +84,7 @@ async function main() {
       normalScale: 1.0,
       shininess: 64,
       // Light params
+      lightEnabled: true,
       lightPosZ: 1.0,
       lightIntensity: 0.5,
       lightColorR: 1.0,
@@ -67,7 +92,7 @@ async function main() {
       lightColorB: 1.0,
       // Mouse control
       mouseEnabled: true,
-      mouseRange: 1.0,
+      mouseRange: 2.0,
     };
 
     const gui = new GUI({ title: "2.5D Parallax Controls" });
@@ -82,6 +107,7 @@ async function main() {
     parallaxFolder.add(params, "shininess", 1, 128, 1).name("Shininess");
 
     const lightFolder = gui.addFolder("Light");
+    lightFolder.add(params, "lightEnabled").name("Enabled");
     lightFolder.add(params, "lightPosZ", 0.1, 2.0, 0.1).name("Distance");
     lightFolder.add(params, "lightIntensity", 0.1, 2.0, 0.1).name("Intensity");
     const lightColorFolder = lightFolder.addFolder("Color");
@@ -101,12 +127,8 @@ async function main() {
 
     const scene = new Scene();
 
-    const imageWidth = 560;
-    const imageHeight = 1000;
-    const aspectRatio = imageWidth / imageHeight;
-
     const planeHeight = 2.0;
-    const planeWidth = planeHeight * aspectRatio;
+    const planeWidth = planeHeight * imageAspectRatio;
 
     const planeGeometry = new PlaneGeometry({
       width: planeWidth,
@@ -144,7 +166,14 @@ async function main() {
       far: 100,
     });
     camera.updateAspect(canvas);
-    camera.position.set(0, 0, 3);
+
+    // Calculate camera distance to fill viewport with the plane
+    // For a plane of height H, to fill the viewport vertically:
+    // distance = (H / 2) / tan(fov / 2)
+    const fovRadians = (45 * Math.PI) / 180;
+    const distance = planeHeight / 2 / Math.tan(fovRadians / 2);
+
+    camera.position.set(0, 0, distance);
     camera.lookAt(new Vector3(0, 0, 0));
 
     let mouseX = 0;
@@ -167,6 +196,14 @@ async function main() {
     });
 
     engine.run(() => {
+      // Update camera aspect ratio if canvas size changed
+      camera.updateAspect(canvas);
+
+      // Update parallax material properties
+      parallaxMaterial.depthScale = params.depthScale;
+      parallaxMaterial.normalScale = params.normalScale;
+      parallaxMaterial.shininess = params.shininess;
+
       // Update light position based on mouse
       if (params.mouseEnabled) {
         light.position.set(
@@ -179,12 +216,16 @@ async function main() {
       }
 
       // Update light properties
-      light.intensity = params.lightIntensity;
-      light.color = new Color(
-        params.lightColorR,
-        params.lightColorG,
-        params.lightColorB
-      );
+      if (params.lightEnabled) {
+        light.intensity = params.lightIntensity;
+        light.color = new Color(
+          params.lightColorR,
+          params.lightColorG,
+          params.lightColorB
+        );
+      } else {
+        light.intensity = 0;
+      }
 
       renderer.render(scene, camera);
     });
