@@ -55,6 +55,10 @@ export class Renderer {
   // Skybox rendering resources
   private skyboxResources?: SkyboxGPUResources;
 
+  // Dummy textures for IBL bind group when IBL is not used
+  private _dummyCubeTexture?: GPUTexture;
+  private _dummyBrdfLUT?: GPUTexture;
+
   /**
    * Creates a new Renderer instance with 4x MSAA and depth buffering.
    * @param engine - The Engine instance providing WebGPU device and canvas context
@@ -109,6 +113,40 @@ export class Renderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
       sampleCount: this.sampleCount,
     });
+  }
+
+  /**
+   * Creates or returns a cached dummy cube texture for IBL bind groups.
+   * Used when PBRMaterial doesn't have IBL textures but shader requires bind group.
+   */
+  private getDummyCubeTexture(): GPUTexture {
+    if (!this._dummyCubeTexture) {
+      this._dummyCubeTexture = this.device.createTexture({
+        label: "Dummy IBL Cube Texture",
+        size: [1, 1, 6],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING,
+        dimension: "2d",
+      });
+    }
+    return this._dummyCubeTexture;
+  }
+
+  /**
+   * Creates or returns a cached dummy BRDF LUT texture for IBL bind groups.
+   * Used when PBRMaterial doesn't have IBL textures but shader requires bind group.
+   */
+  private getDummyBrdfLUT(): GPUTexture {
+    if (!this._dummyBrdfLUT) {
+      this._dummyBrdfLUT = this.device.createTexture({
+        label: "Dummy BRDF LUT",
+        size: [1, 1],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING,
+        dimension: "2d",
+      });
+    }
+    return this._dummyBrdfLUT;
   }
 
   /**
@@ -277,11 +315,14 @@ export class Renderer {
         entries: bindGroupEntries,
       });
 
-      // Create IBL bind group for PBR materials with IBL enabled
+      // Create IBL bind group for PBR materials
+      // Always create bind group because shader declares @group(1) even when not using IBL
       let iblBindGroup: GPUBindGroup | undefined;
-      if (mesh.material instanceof PBRMaterial && mesh.material.useIBL) {
+      if (mesh.material instanceof PBRMaterial) {
         const iblTextures = mesh.material.getIBLTextures(this.device);
+
         if (iblTextures) {
+          // Real IBL textures available
           iblBindGroup = this.device.createBindGroup({
             label: "IBL Bind Group",
             layout: pipeline.getBindGroupLayout(1),
@@ -301,6 +342,37 @@ export class Renderer {
               {
                 binding: 3,
                 resource: iblTextures.brdfLUT.gpuTexture.createView(),
+              },
+            ],
+          });
+        } else {
+          // No IBL textures - create dummy bind group to satisfy shader requirements
+          const dummyCube = this.getDummyCubeTexture();
+          const dummyBrdf = this.getDummyBrdfLUT();
+          const dummySampler = this.device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+          });
+
+          iblBindGroup = this.device.createBindGroup({
+            label: "Dummy IBL Bind Group",
+            layout: pipeline.getBindGroupLayout(1),
+            entries: [
+              {
+                binding: 0,
+                resource: dummySampler,
+              },
+              {
+                binding: 1,
+                resource: dummyCube.createView({ dimension: "cube" }),
+              },
+              {
+                binding: 2,
+                resource: dummyCube.createView({ dimension: "cube" }),
+              },
+              {
+                binding: 3,
+                resource: dummyBrdf.createView(),
               },
             ],
           });
