@@ -5,7 +5,7 @@ struct Uniforms {
   face: u32,
   roughness: f32,
   maxMipLevel: f32,
-  padding: f32,  // For 16-byte alignment
+  padding: f32,  // Unused, matches CPU buffer size (16 bytes total)
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
