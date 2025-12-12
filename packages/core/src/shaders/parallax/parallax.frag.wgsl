@@ -4,7 +4,7 @@ struct Uniforms {
   cameraPos: vec4f,           // 16B offset 128 (xyz = position, w unused)
   materialParams: vec4f,      // 16B offset 144 (x = depthScale, y = normalScale, z = useNormalMap, w = shininess)
   ambientLight: vec4f,        // 16B offset 160 (rgb = color, a = intensity)
-  lightParams: vec4f,         // 16B offset 176 (x = lightCount, yzw = reserved)
+  lightParams: vec4f,         // 16B offset 176 (x = lightCount, y = selfShadowStrength, z = reserved, w = packed flags)
   // lights[4]: each light is 3 vec4f (48 bytes) starting at offset 192
   light0Position: vec4f,      // 16B offset 192 (xyz = position/direction, w unused)
   light0Color: vec4f,         // 16B offset 208 (rgb = color, a = intensity)

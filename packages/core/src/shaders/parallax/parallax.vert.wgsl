@@ -4,7 +4,7 @@ struct Uniforms {
   cameraPos: vec4f,           // 16B offset 128 (xyz = position, w unused)
   materialParams: vec4f,      // 16B offset 144 (x = depthScale, y = normalScale, z = useNormalMap, w = shininess)
   ambientLight: vec4f,        // 16B offset 160 (rgb = color, a = intensity)
-  lightParams: vec4f,         // 16B offset 176 (x = lightCount, yzw = reserved)
+  lightParams: vec4f,         // 16B offset 176 (x = lightCount, y = selfShadowStrength, z = reserved, w = packed flags)
   // lights[4]: each light is 3 vec4f (48 bytes) starting at offset 192
   light0Position: vec4f,      // 16B offset 192 (xyz = position/direction, w unused)
   light0Color: vec4f,         // 16B offset 208 (rgb = color, a = intensity)
@@ -80,7 +80,7 @@ fn worldTBN(model3: mat3x3f, localNormal: vec3f, localTangent: vec3f, localBitan
   let T_in = normalize(model3 * localTangent);
   let B_in = normalize(model3 * localBitangent);
 
-  // Orthonormalize T to N (Gram–Schmidt)
+  // Orthonormalize T to N (Gram-Schmidt)
   let T = normalize(T_in - N * dot(N, T_in));
   // Preserve handedness using original bitangent
   let handedness = select(-1.0, 1.0, dot(cross(N, T), B_in) >= 0.0);
@@ -108,7 +108,7 @@ fn main(input: VertexInput) -> VertexOutput {
   output.worldTangent = tbn.T;
   output.worldBitangent = tbn.B;
 
-  // View vector (world space): keep unnormalized for interpolation stability.
+  // View vector (world space): kept unnormalized for interpolation stability.
   output.viewDir = uniforms.cameraPos.xyz - worldPos;
 
   return output;
