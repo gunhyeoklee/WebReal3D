@@ -64,8 +64,7 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
     let H = importanceSampleGGX(Xi, N, roughness);
     let L = normalize(2.0 * dot(V, H) * H - V);
     
-    // Use textureSampleLevel to ensure consistent behavior in loops and avoid implicit derivative calculations,
-    // which can cause issues in fragment shaders (e.g., inside loops or non-uniform control flow).
+    // Use textureSampleLevel for explicit LOD control within loops, as required by WGSL when derivatives cannot be computed automatically.
     let sample = textureSampleLevel(envMap, texSampler, L, lod).rgb;
     
     let NdotL = max(dot(N, L), 0.0);
