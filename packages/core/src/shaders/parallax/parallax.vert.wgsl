@@ -3,8 +3,21 @@ struct Uniforms {
   modelMatrix: mat4x4f,       // 64B offset 64
   cameraPos: vec4f,           // 16B offset 128 (xyz = position, w unused)
   materialParams: vec4f,      // 16B offset 144 (x = depthScale, y = normalScale, z = useNormalMap, w = shininess)
-  lightPos: vec4f,            // 16B offset 160 (xyz = position, w unused)
-  lightColor: vec4f,          // 16B offset 176 (rgb = color, a = intensity)
+  ambientLight: vec4f,        // 16B offset 160 (rgb = color, a = intensity)
+  lightParams: vec4f,         // 16B offset 176 (x = lightCount, yzw = reserved)
+  // lights[4]: each light is 3 vec4f (48 bytes) starting at offset 192
+  light0Position: vec4f,      // 16B offset 192 (xyz = position/direction, w unused)
+  light0Color: vec4f,         // 16B offset 208 (rgb = color, a = intensity)
+  light0Params: vec4f,        // 16B offset 224 (x = type, y = range, z = attenType, w = attenParam)
+  light1Position: vec4f,      // 16B offset 240
+  light1Color: vec4f,         // 16B offset 256
+  light1Params: vec4f,        // 16B offset 272
+  light2Position: vec4f,      // 16B offset 288
+  light2Color: vec4f,         // 16B offset 304
+  light2Params: vec4f,        // 16B offset 320
+  light3Position: vec4f,      // 16B offset 336
+  light3Color: vec4f,         // 16B offset 352
+  light3Params: vec4f,        // 16B offset 368 (total: 384B)
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -34,6 +47,11 @@ struct VertexOutput {
 @vertex
 fn main(input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
+  let model3 = mat3x3f(
+    uniforms.modelMatrix[0].xyz,
+    uniforms.modelMatrix[1].xyz,
+    uniforms.modelMatrix[2].xyz
+  );
   
   // Transform position
   let worldPos = (uniforms.modelMatrix * vec4f(input.position, 1.0)).xyz;
@@ -42,18 +60,27 @@ fn main(input: VertexInput) -> VertexOutput {
   output.uv = input.uv;
   
   // Transform normal to world space
-  let worldNormal = normalize((uniforms.modelMatrix * vec4f(input.normal, 0.0)).xyz);
-  output.worldNormal = worldNormal;
+  // NOTE: For broad WebGPU driver compatibility, avoid inverse() here.
+  // This is correct for rigid transforms and uniform scaling.
+  let N = normalize(model3 * input.normal);
+  output.worldNormal = N;
   
   // Transform tangent and bitangent to world space
-  let worldTangent = normalize((uniforms.modelMatrix * vec4f(input.tangent, 0.0)).xyz);
-  let worldBitangent = normalize((uniforms.modelMatrix * vec4f(input.bitangent, 0.0)).xyz);
-  
-  output.worldTangent = worldTangent;
-  output.worldBitangent = worldBitangent;
+  let T_in = normalize(model3 * input.tangent);
+  let B_in = normalize(model3 * input.bitangent);
+
+  // Orthonormalize T to N (Gram–Schmidt)
+  let T = normalize(T_in - N * dot(N, T_in));
+  // Preserve handedness using original bitangent
+  let handedness = select(-1.0, 1.0, dot(cross(N, T), B_in) >= 0.0);
+  let B = normalize(cross(N, T) * handedness);
+
+  output.worldTangent = T;
+  output.worldBitangent = B;
   
   // Calculate view direction in world space
-  output.viewDir = normalize(uniforms.cameraPos.xyz - worldPos);
+  // Pass unnormalized vector; normalize in fragment for better stability.
+  output.viewDir = uniforms.cameraPos.xyz - worldPos;
   
   return output;
 }

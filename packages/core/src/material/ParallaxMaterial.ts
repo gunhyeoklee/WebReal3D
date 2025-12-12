@@ -17,6 +17,12 @@ export interface ParallaxMaterialOptions {
   shininess?: number;
   /** @default true */
   generateNormalFromDepth?: boolean;
+  /**
+   * Height sampling convention for the depth texture.
+   * When true, height = 1 - depth.r (preserves current behavior).
+   * @default true
+   */
+  invertHeight?: boolean;
 }
 
 /**
@@ -43,6 +49,7 @@ export class ParallaxMaterial implements Material {
   private _normalScale: number;
   private _shininess: number;
   readonly generateNormalFromDepth: boolean;
+  readonly invertHeight: boolean;
   private static _dummyNormalTexture?: Texture;
 
   /**
@@ -57,6 +64,7 @@ export class ParallaxMaterial implements Material {
     this._normalScale = options.normalScale ?? 1.0;
     this._shininess = options.shininess ?? 32.0;
     this.generateNormalFromDepth = options.generateNormalFromDepth ?? true;
+    this.invertHeight = options.invertHeight ?? true;
 
     // Validate depth scale range
     if (this._depthScale < 0.01 || this._depthScale > 0.1) {
@@ -392,7 +400,13 @@ export class ParallaxMaterial implements Material {
     buffer.setFloat32(offset + 112, lightCount, true);
     buffer.setFloat32(offset + 116, 0, true); // reserved
     buffer.setFloat32(offset + 120, 0, true); // reserved
-    buffer.setFloat32(offset + 124, 0, true); // reserved
+    // reserved: pack parallax feature flags into lightParams.w (as float, decoded as u32 in WGSL)
+    // bit0: invertHeight (height = 1 - depth.r)
+    // bit1: generateNormalFromDepth
+    let flags = 0;
+    if (this.invertHeight) flags |= 1;
+    if (this.generateNormalFromDepth) flags |= 2;
+    buffer.setFloat32(offset + 124, flags, true);
   }
 
   /**
