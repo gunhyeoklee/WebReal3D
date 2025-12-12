@@ -665,8 +665,6 @@ export class Renderer {
     // Create minimal render context for skybox
     const renderContext: RenderContext = {
       camera,
-      scene: null as any, // Skybox doesn't need scene
-      mesh: null as any, // Skybox doesn't need mesh
       lights: [],
     };
 

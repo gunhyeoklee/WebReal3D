@@ -21,8 +21,10 @@ export interface VertexBufferLayout {
  */
 export interface RenderContext {
   camera: Camera;
-  scene: Scene;
-  mesh: Mesh;
+  /** Scene currently being rendered (optional for scene-independent passes like skybox) */
+  scene?: Scene;
+  /** Mesh currently being rendered (optional for scene-independent passes like skybox) */
+  mesh?: Mesh;
   /** Lights collected from the scene (collected once per frame by Renderer) */
   lights: Light[];
 }
@@ -92,7 +94,7 @@ export interface Material {
    * Writes material-specific uniform data to the buffer.
    * @param buffer - DataView of the uniform buffer
    * @param offset - Byte offset to start writing (default varies by material, typically 64 after MVP matrix)
-   * @param context - Optional rendering context with camera, scene, and mesh information
+   * @param context - Optional rendering context with camera and optional scene/mesh information
    */
   writeUniformData?(
     buffer: DataView,
