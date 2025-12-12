@@ -21,6 +21,10 @@ export class SamplerCache {
   }
 
   private _makeKey(descriptor: GPUSamplerDescriptor): string {
+    // Note: These defaults mirror WebGPU spec defaults for GPUSamplerDescriptor.
+    // We normalize *only for the cache key* so that callers can omit fields and
+    // still hit the same cached sampler. We do NOT pass this normalized object
+    // to createSampler.
     const normalized = {
       addressModeU: descriptor.addressModeU ?? "clamp-to-edge",
       addressModeV: descriptor.addressModeV ?? "clamp-to-edge",
@@ -30,7 +34,8 @@ export class SamplerCache {
       mipmapFilter: descriptor.mipmapFilter ?? "nearest",
       lodMinClamp: descriptor.lodMinClamp ?? 0,
       lodMaxClamp: descriptor.lodMaxClamp ?? 32,
-      compare: descriptor.compare ?? null,
+      // `compare` is optional; use a sentinel for stable keying when unset.
+      compare: descriptor.compare ?? "__unset__",
       maxAnisotropy: descriptor.maxAnisotropy ?? 1,
     };
 
