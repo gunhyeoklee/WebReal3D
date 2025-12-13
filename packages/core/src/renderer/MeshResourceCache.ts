@@ -301,7 +301,6 @@ export class MeshResourceCache {
   /**
    * Disposes GPU resources associated with a specific mesh.
    * @param mesh - Mesh whose cached resources should be destroyed
-   * @returns Nothing
    */
   disposeMesh(mesh: Mesh): void {
     const resources = this._meshBuffers.get(mesh);
