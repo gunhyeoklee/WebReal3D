@@ -22,6 +22,20 @@ export interface SceneEnvironmentOptions {
   skyboxRoughness?: number;
 }
 
+/**
+ * Represents a 3D scene graph that contains objects, lights, and environment settings.
+ *
+ * @example
+ * ```ts
+ * const scene = new Scene();
+ * const mesh = new Mesh(geometry, material);
+ * scene.add(mesh);
+ *
+ * // Setup environment with IBL
+ * const pmrem = await PMREMGenerator.fromEquirectangular(device, hdrTexture);
+ * scene.setEnvironmentFromPMREM(pmrem, { environmentIntensity: 1.2 });
+ * ```
+ */
 export class Scene extends Object3D {
   private _equirectangularMap?: Texture;
   private _prefilteredMap?: CubeTexture;
@@ -32,34 +46,29 @@ export class Scene extends Object3D {
   private _skyboxMaterial?: SkyboxMaterial;
 
   /**
-   * The equirectangular environment map texture.
+   * Gets the equirectangular environment map texture used for the skybox background.
    */
   get equirectangularMap(): Texture | undefined {
     return this._equirectangularMap;
   }
 
   /**
-   * The pre-filtered specular IBL cubemap.
+   * Gets the pre-filtered specular IBL cubemap for reflections on PBR materials.
    */
   get prefilteredMap(): CubeTexture | undefined {
     return this._prefilteredMap;
   }
 
   /**
-   * The diffuse irradiance IBL cubemap.
+   * Gets the diffuse irradiance IBL cubemap for ambient lighting on PBR materials.
    */
   get irradianceMap(): CubeTexture | undefined {
     return this._irradianceMap;
   }
 
   /**
-   * Environment intensity for IBL reflections on PBR materials.
-   *
-   * @remarks
-   * This only has an effect when IBL is configured (i.e. both `prefilteredMap` and
-   * `irradianceMap` are set / `hasIBL === true`). If you call
-   * `setEnvironmentFromEquirectangular()`, IBL maps are cleared and this value will
-   * not affect rendering until IBL is set again (e.g. via `setEnvironmentFromPMREM()`).
+   * Gets or sets the environment intensity for IBL reflections on PBR materials.
+   * Only affects rendering when IBL is configured (hasIBL === true).
    */
   get environmentIntensity(): number {
     return this._environmentIntensity;
@@ -70,7 +79,7 @@ export class Scene extends Object3D {
   }
 
   /**
-   * Skybox exposure for HDR tone mapping.
+   * Gets or sets the skybox exposure value for HDR tone mapping.
    */
   get skyboxExposure(): number {
     return this._skyboxExposure;
@@ -84,7 +93,7 @@ export class Scene extends Object3D {
   }
 
   /**
-   * Skybox roughness for blur effect (0 = sharp, 1 = maximum blur).
+   * Gets or sets the skybox roughness for blur effect (0 = sharp, 1 = maximum blur).
    */
   get skyboxRoughness(): number {
     return this._skyboxRoughness;
@@ -98,7 +107,7 @@ export class Scene extends Object3D {
   }
 
   /**
-   * The internal skybox material used for rendering the environment background.
+   * Gets the internal skybox material used for rendering the environment background.
    * Automatically created when environment is set.
    */
   get skyboxMaterial(): SkyboxMaterial | undefined {
@@ -106,19 +115,20 @@ export class Scene extends Object3D {
   }
 
   /**
-   * Returns true if the scene has IBL (prefilteredMap and irradianceMap) configured.
+   * Checks if the scene has IBL (Image-Based Lighting) fully configured.
+   * Returns true when both prefilteredMap and irradianceMap are set.
    */
   get hasIBL(): boolean {
     return !!(this._prefilteredMap && this._irradianceMap);
   }
 
   /**
-   * Sets the environment for the scene using PMREM result from PMREMGenerator.
-   * This is the recommended way to set up environment with full IBL support.
+   * Sets the environment using PMREM-generated IBL maps for full PBR lighting support.
+   * This is the recommended method for realistic environment reflections and lighting.
    *
-   * @param pmrem - Result from PMREMGenerator.fromEquirectangular()
-   * @param options - Additional options for environment setup
-   * @throws {Error} If pmrem is missing prefilteredMap or irradianceMap
+   * @param pmrem - Pre-filtered environment maps from PMREMGenerator.fromEquirectangular()
+   * @param options - Optional environment configuration (intensity, exposure, roughness)
+   * @throws Error if pmrem is missing prefilteredMap or irradianceMap
    *
    * @example
    * ```ts
@@ -162,16 +172,12 @@ export class Scene extends Object3D {
   }
 
   /**
-   * Sets the environment using an equirectangular panorama texture.
+   * Sets the environment using an equirectangular panorama texture for skybox only.
+   * Clears IBL maps, so this method does not provide reflections on materials.
+   * Use setEnvironmentFromPMREM() for full IBL support.
    *
-   * @remarks
-   * This method is for skybox background only and does not provide IBL reflections.
-   * It clears the IBL maps (`prefilteredMap` and `irradianceMap`), so
-   * `environmentIntensity` will not have any effect until IBL is set again.
-   * Use `setEnvironmentFromPMREM()` for full IBL support.
-   *
-   * @param texture - Equirectangular panorama texture (2:1 aspect ratio)
-   * @param options - Additional options for environment setup
+   * @param texture - Equirectangular panorama texture (2:1 aspect ratio, HDR or LDR)
+   * @param options - Optional skybox configuration (exposure, roughness)
    *
    * @example
    * ```ts
@@ -205,9 +211,10 @@ export class Scene extends Object3D {
   }
 
   /**
-   * Sets the full environment configuration with manual control.
+   * Sets the full environment configuration with manual control over all maps.
+   * For most use cases, prefer setEnvironmentFromPMREM() or setEnvironmentFromEquirectangular().
    *
-   * @param options - Environment configuration options
+   * @param options - Complete environment configuration including maps and parameters
    */
   setEnvironment(options: SceneEnvironmentOptions): void {
     this._equirectangularMap = options.equirectangularMap;
@@ -241,7 +248,7 @@ export class Scene extends Object3D {
   }
 
   /**
-   * Clears the environment settings.
+   * Clears all environment settings including skybox and IBL maps.
    */
   clearEnvironment(): void {
     this._equirectangularMap = undefined;
@@ -250,14 +257,20 @@ export class Scene extends Object3D {
     this._skyboxMaterial = undefined;
   }
 
+  /**
+   * Updates the world transformation matrices for this scene and all children.
+   * Called automatically by the renderer before rendering.
+   */
   updateMatrixWorld(): void {
     this.updateWorldMatrix(false, true);
   }
 
   /**
-   * Finds the first light of the specified type in the scene.
-   * @param type - Optional light constructor to filter by type
-   * @returns The first matching light found, or undefined if none exists
+   * Finds the first light of the specified type in the scene graph.
+   * Traverses all children to locate a matching light.
+   *
+   * @param type - Optional light constructor to filter by specific type
+   * @returns The first matching light, or undefined if none exists
    */
   findFirstLight<T extends Light = Light>(
     type?: new (...args: any[]) => T
