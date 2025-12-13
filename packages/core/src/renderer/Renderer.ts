@@ -103,7 +103,6 @@ export class Renderer {
    * Renders the scene from the given camera.
    * @param scene - Scene containing meshes, lights, and an optional skybox material
    * @param camera - Camera defining the view and projection
-   * @returns Nothing
    */
   render(scene: Scene, camera: Camera): void {
     scene.updateMatrixWorld();
